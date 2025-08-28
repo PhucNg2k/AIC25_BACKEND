@@ -83,7 +83,7 @@ print(f"Loading metadata from: {metadata_path}")
 
 # Load index
 index = faiss.read_index(index_path)
-print(f"FAISS index loaded from {index_path}")
+print(f"\nFAISS index loaded from {index_path}")
 
 # Load metadata
 with open(metadata_path, 'r') as f:
@@ -94,9 +94,8 @@ if index is None or metadata is None:
     print("Error: No FAISS index found. Please run indexing.py first to create the index.")
     exit(1)
 
-print(f"Loaded index with {len(metadata.keys())} images")
+print(f"\nLoaded index with {len(metadata.keys())} images")
 
-print(metadata[str(3232)])
 
 def get_text_embedding(text_query: str):
     """Get CLIP embedding for a text query"""
