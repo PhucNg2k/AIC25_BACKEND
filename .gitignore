@@ -1,0 +1,12 @@
+.vscode
+.env
+__pycache__
+
+
+react-ui
+Experiment
+
+FaissIndex/
+Metadata/
+Experiment/
+Results/
