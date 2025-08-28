@@ -1,13 +1,17 @@
+import open_clip # open_clip must be imported before torch
+import torch
 
 import faiss
 import os
-import torch
-import clip
-from pydantic import BaseModel
 import json
-import sys
-import open_clip
+from pydantic import BaseModel
+import numpy as np
 
+# Fix OpenMP runtime conflict on macOS
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+
+print('Torch version:', torch.__version__)
+print('OpenCLIP version:', open_clip.__version__)
 
 CONFIG = {
     'root_path': '/kaggle/input/first-batch-keyframes/keyframes',
@@ -45,8 +49,13 @@ metadata_save_path = "id_to_name_vitL.json"
 
 DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
 
-print("Num GPUS: ", faiss.get_num_gpus())  # should print >= 1 if GPU is active
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.cuda.is_available():
+    device = 'cuda'
+elif torch.backends.mps.is_available():
+    device = 'mps'
+else:
+    device = 'cpu'
+
 print("DEVICE: ", device)
 
 
@@ -61,7 +70,7 @@ model = model.to(device)
 model.eval()
 
 # Test model
-print(f"Model loaded successfully")
+print(f"\nModel loaded successfully")
 print(f"Model device: {next(model.parameters()).device}")
 
 tokenizer = open_clip.get_tokenizer(CONFIG['model_name'])
@@ -69,11 +78,10 @@ tokenizer = open_clip.get_tokenizer(CONFIG['model_name'])
 
 index_path = os.path.join(faiss_save_dir, index_save_path)
 metadata_path = os.path.join(faiss_save_dir, metadata_save_path)
-print(f"Loading index from: {index_path}")
+print(f"\nLoading index from: {index_path}")
 print(f"Loading metadata from: {metadata_path}")
 
-
- # Load index
+# Load index
 index = faiss.read_index(index_path)
 print(f"FAISS index loaded from {index_path}")
 
@@ -87,6 +95,7 @@ if index is None or metadata is None:
     exit(1)
 
 print(f"Loaded index with {len(metadata.keys())} images")
+
 print(metadata[str(3232)])
 
 def get_text_embedding(text_query: str):
@@ -98,6 +107,7 @@ def get_text_embedding(text_query: str):
         text_features = model.encode_text(text_tokens)
         # Normalize and return as numpy for FAISS
         text_embedding = process_feat(text_features)
+        
     return text_embedding
 
 
@@ -138,7 +148,6 @@ def search_query(text_query: str, index, metadata, top_k: int = 10) -> list[Imag
             )
             results.append(result)
     
-
     return results
 
 def postprocess_output(results: list[ImageResult], max_results: int = 5):
@@ -182,7 +191,7 @@ def interactive_search():
                 postprocess_output(results, max_results=5)
             else:
                 print("No results found.")
-        
+            
         except Exception as e:
             print(f"Error during search: {e}")
 
