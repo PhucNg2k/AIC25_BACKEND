@@ -52,8 +52,8 @@ class SearchRequestEntry(BaseModel):
 
 @app.post("/search")
 async def search_entry(request: SearchRequestEntry):
-    if request.top_k <= 0 or request.top_k > 100:
-        raise HTTPException(status_code=400, detail="top_k must be between 1 and 100")
+    #if request.top_k <= 0 or request.top_k >= 1000:
+    #    raise HTTPException(status_code=400, detail="top_k must be between 1 and 999")
     
     try:
         results = []

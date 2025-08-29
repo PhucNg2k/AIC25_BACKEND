@@ -18,7 +18,7 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 class SearchRequest(BaseModel):
     query: str
-    top_k: Optional[int] = 10
+    top_k: Optional[int] = 100
 
 
 class SearchResponse(BaseModel):
@@ -34,8 +34,6 @@ async def text_search(request: SearchRequest):
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Query string cannot be empty")
 
-    if request.top_k <= 0 or request.top_k > 100:
-        raise HTTPException(status_code=400, detail="top_k must be between 1 and 100")
 
     try:
         if index is None or metadata is None:
