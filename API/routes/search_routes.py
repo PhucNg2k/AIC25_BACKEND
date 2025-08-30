@@ -34,7 +34,6 @@ async def text_search(request: SearchRequest):
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Query string cannot be empty")
 
-
     try:
         if index is None or metadata is None:
             raise HTTPException(

@@ -1,3 +1,4 @@
+# searching keyframes using a text query with CLIP model and FAISS for fast similarity search
 import open_clip # open_clip must be imported before torch
 import torch
 
@@ -111,11 +112,15 @@ def get_text_embedding(text_query: str):
 
 
 def search_query(text_query: str, index, metadata, top_k: int = 10) -> list[ImageResult]:
-    """Search for images similar to a text query"""
-    # Get text embedding
-    text_embedding = get_text_embedding(text_query)
+    """Search for images similar to a text query. Take a query, a FAISS index, metadata, and the number
+    of top results to return.
+    """
+    # Get text embedding by encoding the text query into CLIP embedding
+    text_embedding = get_text_embedding(text_query) # ndarray: (1, embedding_dim) float32
     
-    # Search in FAISS index
+    # Search in FAISS index by performing a similarity search
+    # distances: similarity scores numpy array shape (1, top_k)
+    # indices: FAISS index IDs: numpy array of shape (1, top_k)
     distances, indices = index.search(text_embedding, top_k)
 
     # Convert results to ImageResult objects
@@ -125,6 +130,7 @@ def search_query(text_query: str, index, metadata, top_k: int = 10) -> list[Imag
         if str(idx) in metadata.keys():
             frame_path = metadata[str(idx)]
             
+            # check file metadata in FaissIndex folder
             _, video_name, frame_f = frame_path.split("/")
 
             frame_f = os.path.splitext(frame_f)[0] #####
