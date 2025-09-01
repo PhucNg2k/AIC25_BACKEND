@@ -1,5 +1,12 @@
 from typing import Tuple
+from models import ImageResult
 
+def convert_ImageList(raw_results):
+    results = []
+    for raw_result in raw_results:
+        result = ImageResult(**raw_result)
+        results.append(result)
+    return results
 
 def parse_frame_file(frame_data: str) -> Tuple[str, str]:
     """

@@ -8,20 +8,15 @@ if ROOT_DIR not in sys.path:
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import httpx
 
-from typing import List, Optional, Dict, Any
+from typing import List
 from models import *
 
 # Routers & shared models (already defined in routes/search_routes.py)
 from routes.submit_csv_routes import router as submit_csv_router
+from routes.search_routes import router as search_router
 
-from routes.search_routes import (
-    router as search_router,
-    text_search as text_search_route
-)
-
-# For /health; these are created in retrieve_vitL at import time
-# (safe: the module is cached after the first import by search_routes)
 from retrieve_vitL import index as search_index, metadata as search_metadata
 
 app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
@@ -44,22 +39,35 @@ app.add_middleware(
 async def root():
     return {"message": "Text-to-Image Retrieval API is running", "status": "healthy"}
 
-@app.post("/search", response_model=SearchResponse)
+@app.post("/search-entry", response_model=SearchResponse)
 async def search_entry(request: SearchRequestEntry):
     try:
         results: List[ImageResult] = []
 
-        # Text modality (delegates to your router's text_search)
+        # Text modality - HTTP call to /search/text endpoint
         if request.text and request.text.strip():
-            text_req = SearchRequest(query=request.text.strip(), top_k=request.top_k)
-            text_resp: SearchResponse = await text_search_route(text_req)
-            results.extend(text_resp.results)
+            async with httpx.AsyncClient() as client:
+                text_response = await client.post(
+                    "http://localhost:8000/search/text",
+                    json={"query": request.text.strip(), "top_k": request.top_k}
+                )
+                if text_response.status_code == 200:
+                    text_data = text_response.json()
+                    
+                    results.extend(text_data["results"])
+                else:
+                    raise HTTPException(
+                        status_code=text_response.status_code,
+                        detail=f"Text search failed: {text_response.text}"
+                    )
 
         # TODO: Implement these modalities later
         if request.ocr and request.ocr.strip():
             pass
+
         if request.localized and request.localized.strip():
             pass
+        
         if request.img:
             pass
 

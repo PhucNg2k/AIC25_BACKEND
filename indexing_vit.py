@@ -2,7 +2,7 @@ import numpy as np
 import faiss
 import os
 import json
-
+from config import CLIP_EMBED_DIM
 id_to_name = {} 
 
 faiss_save_dir  = "FaissIndex" 
@@ -22,9 +22,7 @@ def process_feat(feat):
 
 idx_num = 0
 
-
-N_DIM = 768
-index = faiss.IndexFlatIP(N_DIM)  # Inner Product for cosine similarity
+index = faiss.IndexFlatIP(CLIP_EMBED_DIM)  # Inner Product for cosine similarity
 
 feat_data = np.load(DATA_FOLDER)
 

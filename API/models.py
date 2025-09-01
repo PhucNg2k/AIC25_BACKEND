@@ -31,7 +31,7 @@ class SearchRequest(BaseModel):
 
 class SearchResponse(BaseModel):
     success: bool
-    query: str
+    query: Optional[str] = None
     results: List[ImageResult]
     total_results: int
     message: Optional[str] = None
