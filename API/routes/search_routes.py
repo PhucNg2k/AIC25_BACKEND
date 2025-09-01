@@ -10,24 +10,10 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from retrieve_vitL import search_query, index, metadata, ImageResult
-
+from retrieve_vitL import search_query, index, metadata
+from models import *
 
 router = APIRouter(prefix="/search", tags=["search"])
-
-
-class SearchRequest(BaseModel):
-    query: str
-    top_k: Optional[int] = 100
-
-
-class SearchResponse(BaseModel):
-    success: bool
-    query: str
-    results: List[ImageResult]
-    total_results: int
-    message: Optional[str] = None
-
 
 @router.post("/text", response_model=SearchResponse)
 async def text_search(request: SearchRequest):
@@ -42,7 +28,13 @@ async def text_search(request: SearchRequest):
             )
 
         en_query = request.query.strip()
-        results = search_query(en_query.strip().lower(), index, metadata, top_k=request.top_k)
+        raw_results = search_query(en_query.strip().lower(), index, metadata, top_k=request.top_k)
+        
+        # Convert raw results to ImageResult instances
+        results = []
+        for raw_result in raw_results:
+            result = ImageResult(**raw_result)
+            results.append(result)
 
         return SearchResponse(
             success=True,

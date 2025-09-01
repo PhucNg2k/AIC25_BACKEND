@@ -7,6 +7,9 @@ import os
 import json
 from pydantic import BaseModel
 import numpy as np
+from typing import List, Dict, Any
+
+
 
 # Fix OpenMP runtime conflict on macOS
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
@@ -25,15 +28,6 @@ CONFIG = {
 }
 
 
-# Define ImageResult locally to avoid import issues
-class ImageResult(BaseModel):
-    video_name: str
-    frame_idx: int
-    image_path: str
-    score: float
-
-import numpy as np
-
 def process_feat(feat):
     feat = feat.cpu().numpy().astype(np.float32)  # ensure float32 before normalize
     feat = feat.reshape(1, -1)  # reshape to 2D first
@@ -42,7 +36,6 @@ def process_feat(feat):
 
 # Get the directory where this script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
-
 faiss_save_dir = os.path.join(script_dir, "FaissIndex")
 
 index_save_path = "faiss_index_vitL.bin"
@@ -95,7 +88,7 @@ if index is None or metadata is None:
     print("Error: No FAISS index found. Please run indexing.py first to create the index.")
     exit(1)
 
-print(f"\nLoaded index with {len(metadata.keys())} images")
+print(f"\nLoaded index with {len(metadata.keys())} images\n")
 
 
 def get_text_embedding(text_query: str):
@@ -111,7 +104,7 @@ def get_text_embedding(text_query: str):
     return text_embedding
 
 
-def search_query(text_query: str, index, metadata, top_k: int = 10) -> list[ImageResult]:
+def search_query(text_query: str, index, metadata, top_k: int = 10) -> List[Dict[str, Any]]:
     """Search for images similar to a text query. Take a query, a FAISS index, metadata, and the number
     of top results to return.
     """
@@ -119,11 +112,7 @@ def search_query(text_query: str, index, metadata, top_k: int = 10) -> list[Imag
     text_embedding = get_text_embedding(text_query) # ndarray: (1, embedding_dim) float32
     
     # Search in FAISS index by performing a similarity search
-    # distances: similarity scores numpy array shape (1, top_k)
-    # indices: FAISS index IDs: numpy array of shape (1, top_k)
     distances, indices = index.search(text_embedding, top_k)
-
-    # Convert results to ImageResult objects
 
     results = []
     for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
@@ -146,26 +135,26 @@ def search_query(text_query: str, index, metadata, top_k: int = 10) -> list[Imag
             #similarity_score = max(0, min(100, (float(distance) + 1) * 50))
             similarity_score = distance
 
-            result = ImageResult(
-                video_name=video_name,
-                frame_idx=frame_idx,
-                image_path=image_path,
-                score=similarity_score  # Now represents similarity percentage (0-100)
-            )
+            result = {
+                'video_name': video_name,
+                'frame_idx': frame_idx,
+                'image_path': image_path,
+                'score': similarity_score
+            }
             results.append(result)
     
     return results
 
-def postprocess_output(results: list[ImageResult], max_results: int = 5):
+def postprocess_output(results: List[Dict[str, Any]], max_results: int = 5):
     """Post-process and display search results"""
     print(f"\nTop {min(len(results), max_results)} search results:")
     print("-" * 80)
     
     for i, result in enumerate(results[:max_results]):
-        print(f"{i+1}. Video: {result.video_name}")
-        print(f"   FrameIndex: {result.frame_idx}")
-        print(f"   Path: {result.image_path}")
-        print(f"   Similarity: {result.score:.2f}%")
+        print(f"{i+1}. Video: {result['video_name']}")
+        print(f"   FrameIndex: {result['frame_idx']}")
+        print(f"   Path: {result['image_path']}")
+        print(f"   Similarity: {result['score']:.2f}%")
         print()
     
     return results[:max_results]

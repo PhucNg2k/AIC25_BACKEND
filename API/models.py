@@ -1,0 +1,38 @@
+from pydantic import BaseModel
+from typing import List, Optional, Union, Dict, Any
+
+
+####
+class SearchRequestEntry(BaseModel):
+    text: Optional[str] = None
+    img: Optional[str] = None
+    ocr: Optional[str] = None
+    localized: Optional[str] = None
+    top_k: int = 80
+
+class RerankRequest(BaseModel):
+    chosen_frames: List[str]
+    query: Optional[str] = None
+    top_k: int = 50
+
+### 
+
+class ImageResult(BaseModel):
+    video_name: str
+    frame_idx: int
+    image_path: str
+    score: float
+
+####
+class SearchRequest(BaseModel):
+    query: str
+    top_k: Optional[int] = 100
+
+
+class SearchResponse(BaseModel):
+    success: bool
+    query: str
+    results: List[ImageResult]
+    total_results: int
+    message: Optional[str] = None
+

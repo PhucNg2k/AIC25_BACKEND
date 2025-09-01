@@ -1,8 +1,3 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
-
 import sys, os
 
 # Ensure project root is importable when running: python search_api.py
@@ -11,14 +6,18 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from typing import List, Optional, Dict, Any
+from models import *
+
 # Routers & shared models (already defined in routes/search_routes.py)
 from routes.submit_csv_routes import router as submit_csv_router
+
 from routes.search_routes import (
     router as search_router,
-    text_search as text_search_route,
-    SearchRequest as RouterSearchRequest,
-    SearchResponse as RouterSearchResponse,
-    ImageResult,
+    text_search as text_search_route
 )
 
 # For /health; these are created in retrieve_vitL at import time
@@ -26,6 +25,10 @@ from routes.search_routes import (
 from retrieve_vitL import index as search_index, metadata as search_metadata
 
 app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
+
+# Mount existing routers
+app.include_router(search_router)
+app.include_router(submit_csv_router)
 
 # CORS: if you need cookies/Authorization headers, replace ["*"] with your exact origins
 app.add_middleware(
@@ -36,31 +39,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class SearchRequestEntry(BaseModel):
-    text: Optional[str] = None
-    img: Optional[str] = None
-    ocr: Optional[str] = None
-    localized: Optional[str] = None
-    top_k: int = 80
-
-class RerankRequest(BaseModel):
-    chosen_frames: List[str]
-    query: Optional[str] = None
-    top_k: int = 50
 
 @app.get("/")
 async def root():
     return {"message": "Text-to-Image Retrieval API is running", "status": "healthy"}
 
-@app.post("/search", response_model=RouterSearchResponse)
+@app.post("/search", response_model=SearchResponse)
 async def search_entry(request: SearchRequestEntry):
     try:
         results: List[ImageResult] = []
 
         # Text modality (delegates to your router's text_search)
         if request.text and request.text.strip():
-            text_req = RouterSearchRequest(query=request.text.strip(), top_k=request.top_k)
-            text_resp: RouterSearchResponse = await text_search_route(text_req)
+            text_req = SearchRequest(query=request.text.strip(), top_k=request.top_k)
+            text_resp: SearchResponse = await text_search_route(text_req)
             results.extend(text_resp.results)
 
         # TODO: Implement these modalities later
@@ -77,7 +69,7 @@ async def search_entry(request: SearchRequestEntry):
                 detail="At least one search modality (text, ocr, localized, or img) must be provided",
             )
 
-        return RouterSearchResponse(
+        return SearchResponse(
             success=True,
             query=request.text or request.ocr or request.localized or "multi-modal search",
             results=results,
@@ -96,18 +88,18 @@ async def rerank(req: RerankRequest):
     # TODO: wire this to your reranker
     return {"success": True, "count": min(len(req.chosen_frames), req.top_k)}
 
-# Mount existing routers
-app.include_router(search_router)
-app.include_router(submit_csv_router)
+
 
 @app.get("/health")
 async def health_check():
     try:
         index_status = "loaded" if search_index is not None else "not loaded"
         metadata_status = "loaded" if search_metadata is not None else "not loaded"
-        total_images = (search_metadata or {}).get("num_images", 0)
+        total_images = len(search_metadata.keys())
+        status = "healthy" if (search_index and search_metadata and total_images > 0) else 'unhealthy'
+
         return {
-            "status": "healthy",
+            "status": status,
             "index_status": index_status,
             "metadata_status": metadata_status,
             "total_images": total_images
