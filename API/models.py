@@ -1,14 +1,14 @@
 from pydantic import BaseModel
 from typing import List, Optional, Union, Dict, Any
-
+from fastapi import UploadFile
 
 ####
 class SearchRequestEntry(BaseModel):
     text: Optional[str] = None
-    img: Optional[str] = None
+    img: Optional[UploadFile] = None
     ocr: Optional[str] = None
     localized: Optional[str] = None
-    top_k: int = 80
+    top_k: int = 100
 
 class RerankRequest(BaseModel):
     chosen_frames: List[str]

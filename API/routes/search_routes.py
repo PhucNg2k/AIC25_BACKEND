@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Annotated
 import sys
 import os
 from PIL import Image
@@ -47,8 +47,12 @@ async def text_search(request: SearchRequest, search_provider: search_resource_D
         raise HTTPException(status_code=500, detail=f"Internal server error during search: {str(e)}")
 
 
-@router.post("/imageSearch", response_model=SearchResponse)
-async def process_image(image_file: UploadFile, search_provider: search_resource_Deps):
+@router.post("/image", response_model=SearchResponse)
+async def process_image(
+    image_file: Annotated[UploadFile, File(...)],
+    top_k: Annotated[int, Form()] = 30,
+    search_provider: search_resource_Deps = None,
+):
     file_name = image_file.filename
     content_type = image_file.content_type
 
@@ -56,7 +60,7 @@ async def process_image(image_file: UploadFile, search_provider: search_resource
     metadata = search_provider["metadata"]
     
     # Check if it's a valid image type
-    if not content_type.lower().startswith("image/"):
+    if not content_type or not content_type.lower().startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
     
     try:
@@ -73,7 +77,7 @@ async def process_image(image_file: UploadFile, search_provider: search_resource
         elif image_PIL.mode != 'RGB':
             image_PIL = image_PIL.convert('RGB')
         
-        raw_results = clip_faiss_search(image_PIL, index, metadata, top_k=30)
+        raw_results = clip_faiss_search(image_PIL, index, metadata, top_k=top_k)
         
         # Convert raw results to ImageResult instances
         results = convert_ImageList(raw_results)

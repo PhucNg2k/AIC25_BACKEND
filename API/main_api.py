@@ -6,11 +6,11 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
-from typing import List
+from typing import List, Optional, Annotated
 from models import *
 
 # Routers & shared models (already defined in routes/search_routes.py)
@@ -40,21 +40,32 @@ async def root():
     return {"message": "Text-to-Image Retrieval API is running", "status": "healthy"}
 
 @app.post("/search-entry", response_model=SearchResponse)
-async def search_entry(request: SearchRequestEntry):
+async def search_entry(
+    text: Annotated[Optional[str], Form()] = None,
+    img: Annotated[Optional[UploadFile], File()] = None,
+    ocr: Annotated[Optional[str], Form()] = None,
+    localized: Annotated[Optional[str], Form()] = None,
+    top_k: Annotated[int, Form()] = 100,
+):
+    if not any([text, ocr, localized, img]):
+        raise HTTPException(
+            status_code=400,
+            detail="At least one search modality (text, ocr, localized, or img) must be provided",
+        )
+    
     try:
         results: List[ImageResult] = []
 
         # Text modality - HTTP call to /search/text endpoint
-        if request.text and request.text.strip():
+        if text and text.strip():
             async with httpx.AsyncClient() as client:
                 text_response = await client.post(
                     "http://localhost:8000/search/text",
-                    json={"query": request.text.strip(), "top_k": request.top_k}
+                    json={"query": text.strip(), "top_k": top_k}
                 )
                 if text_response.status_code == 200:
                     text_data = text_response.json()
-                    
-                    results.extend(text_data["results"])
+                    results.extend(text_data.get("results", []))
                 else:
                     raise HTTPException(
                         status_code=text_response.status_code,
@@ -62,24 +73,38 @@ async def search_entry(request: SearchRequestEntry):
                     )
 
         # TODO: Implement these modalities later
-        if request.ocr and request.ocr.strip():
+        if ocr and ocr.strip():
             pass
 
-        if request.localized and request.localized.strip():
+        if localized and localized.strip():
             pass
         
-        if request.img:
-            pass
-
-        if not any([request.text, request.ocr, request.localized, request.img]):
-            raise HTTPException(
-                status_code=400,
-                detail="At least one search modality (text, ocr, localized, or img) must be provided",
-            )
+        if img:
+            async with httpx.AsyncClient() as client:
+                files = {
+                    "image_file": (
+                        img.filename or "upload",
+                        img.file,
+                        getattr(img, "content_type", "application/octet-stream"),
+                    )
+                }
+                image_response = await client.post(
+                    "http://localhost:8000/search/image",
+                    files=files,
+                    data={"top_k": str(top_k)},
+                )
+                if image_response.status_code == 200:
+                    image_data = image_response.json()
+                    results.extend(image_data.get("results", []))
+                else:
+                    raise HTTPException(
+                        status_code=image_response.status_code,
+                        detail=f"Image search failed: {image_response.text}"
+                    )
 
         return SearchResponse(
             success=True,
-            query=request.text or request.ocr or request.localized or "multi-modal search",
+            query=text or ocr or localized or "multi-modal search",
             results=results,
             total_results=len(results),
             message=f"Found {len(results)} results from search gateway",
