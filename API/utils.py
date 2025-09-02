@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 from models import ImageResult
 
 def convert_ImageList(raw_results):
@@ -7,6 +7,44 @@ def convert_ImageList(raw_results):
         result = ImageResult(**raw_result)
         results.append(result)
     return results
+
+
+def sort_descending_results(results: List[ImageResult]) -> List[ImageResult]:
+    if not results:
+        return []
+    return sorted(results, key=lambda r: r['score'], reverse=True)
+
+def get_intersection_results(list_results: List[List[ImageResult]]) -> List[ImageResult]:
+    """
+    Return ImageResults that appear in EVERY list based on (video_name, frame_idx).
+    No sorting or score aggregation here. If an ImageResult appears in multiple
+    lists, we return the instance from the FIRST list to preserve a stable source.
+    """
+    if not list_results:
+        return []
+    if any((lst is None or len(lst) == 0) for lst in list_results):
+        return []
+
+    if len(list_results) == 1:
+        return list_results[0]
+
+    def make_key(item: ImageResult):
+        return (item['video_name'], item['frame_idx'])
+
+    # Compute intersection of keys across all lists
+    key_sets = [{make_key(item) for item in lst} for lst in list_results]
+    intersect_keys = set.intersection(*key_sets)
+    if not intersect_keys:
+        return []
+
+    # Preserve order from the first list: pick items whose key is in intersection
+    first_list = list_results[0]
+    intersection_results: List[ImageResult] = []
+    for item in first_list:
+        if make_key(item) in intersect_keys:
+            intersection_results.append(item)
+
+    return intersection_results
 
 def parse_frame_file(frame_data: str) -> Tuple[str, str]:
     """

@@ -19,6 +19,9 @@ from routes.search_routes import router as search_router
 
 from retrieve_vitL import index as search_index, metadata as search_metadata
 
+from utils import get_intersection_results, sort_descending_results
+from itertools import chain
+
 app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
 
 # Mount existing routers
@@ -46,6 +49,7 @@ async def search_entry(
     ocr: Annotated[Optional[str], Form()] = None,
     localized: Annotated[Optional[str], Form()] = None,
     top_k: Annotated[int, Form()] = 100,
+    intersect: Annotated[bool, Form()] = False
 ):
     if not any([text, ocr, localized, img]):
         raise HTTPException(
@@ -65,7 +69,9 @@ async def search_entry(
                 )
                 if text_response.status_code == 200:
                     text_data = text_response.json()
-                    results.extend(text_data.get("results", []))
+
+                    if (text_data.get("results", [])!=[]):
+                        results.append(text_data["results"])
                 else:
                     raise HTTPException(
                         status_code=text_response.status_code,
@@ -95,16 +101,27 @@ async def search_entry(
                 )
                 if image_response.status_code == 200:
                     image_data = image_response.json()
-                    results.extend(image_data.get("results", []))
+
+                    if (image_data.get("results", []) != []):
+                        results.append(image_data["results"])
                 else:
                     raise HTTPException(
                         status_code=image_response.status_code,
                         detail=f"Image search failed: {image_response.text}"
                     )
+        
+        if (intersect):
+            results = get_intersection_results(results)
+        else:
+            results = list(chain.from_iterable(results)) # flatten out the results
+        
+        results = sort_descending_results(results)
 
+        success_status = (len(results) > 0) 
+        
         return SearchResponse(
-            success=True,
-            query=text or ocr or localized or "multi-modal search",
+            success=success_status,
+            query="multi-modal search",
             results=results,
             total_results=len(results),
             message=f"Found {len(results)} results from search gateway",
