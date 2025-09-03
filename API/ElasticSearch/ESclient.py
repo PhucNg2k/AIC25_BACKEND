@@ -143,6 +143,7 @@ class ESClientBase(ABC):
         """Bulk index from pandas DataFrame using the child's document converter"""
         try:
             documents = []
+            print("DF columns: ", df.columns)
             for _, row in df.iterrows():
                 doc = self.convert_row_to_document(row)
                 if doc:  # Skip invalid documents
@@ -359,14 +360,16 @@ class ASRClient(ESClientBase):
 from elasticsearch import Elasticsearch
 import pandas as pd
 
-# Initialize ES client
-es = Elasticsearch(hosts=[ES_LOCAL_URL], api_key=ES_LOCAL_API_KEY)
 
-# Create OCR client
-ocr_client = OCRClient(es, index_name="ocr_index")
 
 # Create index
-ocr_client.create_index()
+ocr_client = OCRClient(
+            hosts=[es_url], 
+            api_key=es_api_key, 
+            index_name='ocr_index'
+        )
+
+ocr_client.create_index(force=True)
 
 # Index data from DataFrame
 df = pd.read_excel("ocr_data.xlsx")

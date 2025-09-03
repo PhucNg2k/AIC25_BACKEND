@@ -82,7 +82,21 @@ async def search_entry(
 
         # TODO: Implement these modalities later
         if ocr and ocr.strip():
-            pass
+            async with httpx.AsyncClient() as client:
+                text_response = await client.post(
+                    "http://localhost:8000/es-search/ocr",
+                    json={"query": ocr.strip(), "top_k": top_k}
+                )
+                if text_response.status_code == 200:
+                    text_data = text_response.json()
+
+                    if (text_data.get("results", [])!=[]):
+                        results.append(text_data["results"])
+                else:
+                    raise HTTPException(
+                        status_code=text_response.status_code,
+                        detail=f"Text search failed: {text_response.text}"
+                        )
 
         if localized and localized.strip():
             pass
