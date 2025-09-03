@@ -26,7 +26,7 @@ class ImageResult(BaseModel):
 ####
 class SearchRequest(BaseModel):
     query: str
-    top_k: Optional[int] = 100
+    top_k: Optional[int] = None
 
 
 class SearchResponse(BaseModel):
