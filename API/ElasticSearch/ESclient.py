@@ -4,8 +4,16 @@ from typing import Any, Dict, List, Optional, Tuple
 from elasticsearch import Elasticsearch, NotFoundError
 from elasticsearch import helpers
 import math
+import os
+import sys
 
 
+API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+if API_DIR not in sys.path:
+    sys.path.append(API_DIR)
+
+from frame_utils import get_metakey, get_pts_time, get_frame_path
 DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
 
 class ESClientBase(ABC):
@@ -263,13 +271,17 @@ class OCRClient(ESClientBase):
                 frame_idx = int(float(frame_id))
             except (TypeError, ValueError):
                 continue
+            
+            metakey = get_metakey(video_name, frame_idx)
+            pts_time = get_pts_time(metakey)
+            image_path = get_frame_path(metakey)
 
             out.append({
                 "video_name": video_name,
                 "frame_idx": frame_idx,
                 "score": score,
-                "image_path": f"{DATA_SOURCE}/{video_folder}/{video_name}/f{frame_idx:06d}.webp",
-                "raw": src,
+                "image_path": image_path,
+                "pts_time": pts_time
             })
         return out
 

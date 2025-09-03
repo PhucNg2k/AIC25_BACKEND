@@ -11,8 +11,14 @@ from typing import List, Dict, Any, Union
 from config import DATA_SOURCE
 from model_loading import model, tokenizer, preprocess, index, metadata, device
 
+from API.frame_utils import get_metakey, get_pts_time, get_frame_path
+
+
 from PIL import Image
 import numpy as np
+
+
+
 
 def process_feat(feat):
     feat = feat.cpu().numpy().astype(np.float32)  # ensure float32 before normalize
@@ -81,15 +87,19 @@ def clip_faiss_search(query: Union[str, Image.Image], index, metadata, top_k: in
 
             frame_f = os.path.splitext(frame_f)[0]
             frame_idx = int(frame_f[1:])
-
-            image_path = f"{DATA_SOURCE}/{frame_path}"    
+  
             similarity_score = distance
+            
+            metakey = get_metakey(video_name, frame_idx)
+            pts_time = get_pts_time(metakey)
+            image_path = get_frame_path(metakey)
 
             result = {
                 'video_name': video_name,
                 'frame_idx': frame_idx,
                 'image_path': image_path,
-                'score': similarity_score
+                'score': similarity_score,
+                'pts_time': pts_time
             }
             results.append(result)
     

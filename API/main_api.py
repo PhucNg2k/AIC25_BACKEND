@@ -51,7 +51,9 @@ async def search_entry(
     ocr: Annotated[Optional[str], Form()] = None,
     localized: Annotated[Optional[str], Form()] = None,
     top_k: Annotated[int, Form()] = 100,
-    intersect: Annotated[bool, Form()] = False
+    intersect: Annotated[bool, Form()] = False,
+    order_dict: Annotated[dict, Form()] = None,
+    weight_dict: Annotated[dict, Form()] = None
 ):
     if not any([text, ocr, localized, img]):
         raise HTTPException(

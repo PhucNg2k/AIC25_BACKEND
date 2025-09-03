@@ -9,10 +9,19 @@ def convert_ImageList(raw_results):
     return results
 
 
+
+
+
+
 def sort_descending_results(results: List[ImageResult]) -> List[ImageResult]:
     if not results:
         return []
     return sorted(results, key=lambda r: r['score'], reverse=True)
+
+def get_late_fusion_results(list_results: List[List[ImageResult]]) -> List[ImageResult]:
+    pass
+
+
 
 def get_intersection_results(list_results: List[List[ImageResult]]) -> List[ImageResult]:
     """

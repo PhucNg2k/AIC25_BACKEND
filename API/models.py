@@ -21,6 +21,7 @@ class ImageResult(BaseModel):
     video_name: str
     frame_idx: int
     image_path: str
+    pts_time: float
     score: float
 
 ####
