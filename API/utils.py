@@ -1,5 +1,5 @@
 from typing import Tuple, List
-from models import ImageResult
+from models.response import ImageResult
 
 def convert_ImageList(raw_results):
     results = []
@@ -7,10 +7,6 @@ def convert_ImageList(raw_results):
         result = ImageResult(**raw_result)
         results.append(result)
     return results
-
-
-
-
 
 
 def sort_descending_results(results: List[ImageResult]) -> List[ImageResult]:

@@ -13,7 +13,9 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from retrieve_vitL import clip_faiss_search
-from models import *
+from models.response import *
+from models.request import *
+
 from dependecies import search_resource_Deps
 from utils import convert_ImageList
 
@@ -23,24 +25,24 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("/text", response_model=SearchResponse)
 async def text_search(request: SearchRequest, search_provider: search_resource_Deps):
-    if not request.query or not request.query.strip():
+    if not request.value or not request.value.strip():
         raise HTTPException(status_code=400, detail="Query string cannot be empty")
     
     index = search_provider["index"]
     metadata = search_provider["metadata"]
 
     try:
-        en_query = request.query.strip().lower()
+        en_query = request.value.strip().lower()
         raw_results = clip_faiss_search(en_query, index, metadata, top_k=request.top_k)
         
         results = convert_ImageList(raw_results)
 
         return SearchResponse(
             success=True,
-            query=request.query.strip(),
+            query=request.value.strip(),
             results=results,
             total_results=len(results),
-            message=f"Found {len(results)} results for query: '{request.query.strip()}'"
+            message=f"Found {len(results)} results for query: '{request.value.strip()}'"
         )
 
     except Exception as e:

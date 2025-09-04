@@ -6,12 +6,15 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-import httpx
+import json
 
 from typing import List, Optional, Annotated
-from models import *
+
+from models.response import SearchResponse
+from models.entry_models import SearchEntryRequest, StageModalities
+from search_utils import call_text_search, call_ocr_search, call_asr_search, call_image_upload
 
 # Routers & shared models (already defined in routes/search_routes.py)
 from routes.submit_csv_routes import router as submit_csv_router
@@ -45,116 +48,66 @@ async def root():
     return {"message": "Text-to-Image Retrieval API is running", "status": "healthy"}
 
 @app.post("/search-entry", response_model=SearchResponse)
-async def search_entry(
-    text: Annotated[Optional[str], Form()] = None,
-    img: Annotated[Optional[UploadFile], File()] = None,
-    ocr: Annotated[Optional[str], Form()] = None,
-    localized: Annotated[Optional[str], Form()] = None,
-    top_k: Annotated[int, Form()] = 100,
-    intersect: Annotated[bool, Form()] = False,
-    order_dict: Annotated[dict, Form()] = None,
-    weight_dict: Annotated[dict, Form()] = None
-):
-    if not any([text, ocr, localized, img]):
-        raise HTTPException(
-            status_code=400,
-            detail="At least one search modality (text, ocr, localized, or img) must be provided",
-        )
-    
+async def search_entry(request: Request):
     try:
-        results: List[ImageResult] = []
+        collected_results = []
+        # If multipart form-data is sent (UI path): parse stage_list JSON and per-stage image files
+        if request.headers.get("content-type", "").startswith("multipart/form-data"):
+            form = await request.form()
+            top_k = int(form.get("top_k", 30))
+            stage_list_str = form.get("stage_list")
+            if stage_list_str:
+                try:
+                    stage_list_obj = json.loads(stage_list_str)
+                except Exception:
+                    raise HTTPException(status_code=400, detail="Invalid stage_list JSON in form-data")
 
-        # Text modality - HTTP call to /search/text endpoint
-        if text and text.strip():
-            async with httpx.AsyncClient() as client:
-                text_response = await client.post(
-                    "http://localhost:8000/search/text",
-                    json={"query": text.strip(), "top_k": top_k}
-                )
-                if text_response.status_code == 200:
-                    text_data = text_response.json()
+                entry = SearchEntryRequest(stage_list=stage_list_obj, top_k=top_k)
+                stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
+                for stage_key, modalities in stage_items:
+                    if not isinstance(modalities, StageModalities):
+                        continue
 
-                    if (text_data.get("results", [])!=[]):
-                        results.append(text_data["results"])
-                else:
-                    raise HTTPException(
-                        status_code=text_response.status_code,
-                        detail=f"Text search failed: {text_response.text}"
-                    )
+                    if modalities.text and modalities.text.value:
+                        text_results = await call_text_search(modalities.text.value, entry.top_k)
+                        if text_results:
+                            collected_results.append(text_results)
 
-        # TODO: Implement these modalities later
-        if ocr and ocr.strip():
-            async with httpx.AsyncClient() as client:
-                text_response = await client.post(
-                    "http://localhost:8000/es-search/ocr",
-                    json={"query": ocr.strip(), "top_k": top_k}
-                )
-                if text_response.status_code == 200:
-                    text_data = text_response.json()
+                    if modalities.ocr and modalities.ocr.value:
+                        ocr_results = await call_ocr_search(modalities.ocr.value, entry.top_k)
+                        if ocr_results:
+                            collected_results.append(ocr_results)
 
-                    if (text_data.get("results", [])!=[]):
-                        results.append(text_data["results"])
-                else:
-                    raise HTTPException(
-                        status_code=text_response.status_code,
-                        detail=f"Text search failed: {text_response.text}"
-                        )
+                    if modalities.asr and modalities.asr.value:
+                        asr_results = await call_asr_search(modalities.asr.value, entry.top_k)
+                        if asr_results:
+                            collected_results.append(asr_results)
 
-        if localized and localized.strip():
-            pass
-        
-        if img:
-            async with httpx.AsyncClient() as client:
-                files = {
-                    "image_file": (
-                        img.filename or "upload",
-                        img.file,
-                        getattr(img, "content_type", "application/octet-stream"),
-                    )
-                }
-                image_response = await client.post(
-                    "http://localhost:8000/search/image",
-                    files=files,
-                    data={"top_k": str(top_k)},
-                )
-                if image_response.status_code == 200:
-                    image_data = image_response.json()
+                    if modalities.img and modalities.img.value:
+                        # UI sets img.value to the field name (e.g., img_1). Retrieve that file from form-data
+                        field_name = modalities.img.value
+                        img_file = form.get(field_name)
+                        if img_file is not None:
+                            img_results = await call_image_upload(img_file, entry.top_k)
+                            if img_results:
+                                collected_results.append(img_results)
 
-                    if (image_data.get("results", []) != []):
-                        results.append(image_data["results"])
-                else:
-                    raise HTTPException(
-                        status_code=image_response.status_code,
-                        detail=f"Image search failed: {image_response.text}"
-                    )
-        
-        if (intersect):
-            results = get_intersection_results(results)
-        else:
-            results = list(chain.from_iterable(results)) # flatten out the results
-        
-        results = sort_descending_results(results)
+        flat_results = list(chain.from_iterable(collected_results)) if collected_results else []
+        sorted_results = sort_descending_results(flat_results)
 
-        success_status = (len(results) > 0) 
-        
         return SearchResponse(
-            success=success_status,
+            success=len(sorted_results) > 0,
             query="multi-modal search",
-            results=results,
-            total_results=len(results),
-            message=f"Found {len(results)} results from search gateway",
+            results=sorted_results,
+            total_results=len(sorted_results),
+            message=f"Found {len(sorted_results)} results from search gateway",
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error during /search: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error during /search: {str(e)}")
-
-@app.post("/reranker")
-async def rerank(req: RerankRequest):
-    # TODO: wire this to your reranker
-    return {"success": True, "count": min(len(req.chosen_frames), req.top_k)}
+        print(f"Error during /search-entry: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error during /search-entry: {str(e)}")
 
 
 
