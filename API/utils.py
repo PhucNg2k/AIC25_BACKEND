@@ -8,13 +8,74 @@ def convert_ImageList(raw_results):
         results.append(result)
     return results
 
+# normalize to (0,1) range
+def normalize_score(frame_list: List[ImageResult]) -> List[ImageResult]:
+    if not frame_list:
+        return []
 
-def sort_descending_results(results: List[ImageResult]) -> List[ImageResult]:
+    scores = [frame['score'] for frame in frame_list]
+    min_score = min(scores)
+    max_score = max(scores)
+
+    # Avoid division by zero if all scores are the same
+    if min_score == max_score:
+        for frame in frame_list:
+            frame['score'] = 0.5
+    else:
+        for frame in frame_list:
+            frame['score'] = (frame['score'] - min_score) / (max_score - min_score)
+
+    return frame_list
+
+
+def sort_score_results(results: List[ImageResult], reverse=True) -> List[ImageResult]:
     if not results:
         return []
-    return sorted(results, key=lambda r: r['score'], reverse=True)
+    return sorted(results, key=lambda r: r['score'], reverse=reverse)
 
-def get_late_fusion_results(list_results: List[List[ImageResult]]) -> List[ImageResult]:
+
+def get_weighted_results_quantity(frame_list: List[ImageResult], weight_score: float) -> List[ImageResult]:
+    if weight_score < 0:
+        return []
+    
+    frame_list = sort_score_results(frame_list, reverse=True)
+    count = max(1, min(len(frame_list), int(len(frame_list) * weight_score)))
+    # Return the top portion of the list
+    return frame_list[:count]
+
+def get_weighted_results_fuse(frame_list: List[ImageResult], weight_score: float) -> List[ImageResult]:
+    for f in frame_list:
+        f["score"] *= weight_score
+        
+    return frame_list
+
+def get_weighted_union_results(list_results: List[List[ImageResult]], weight_list: List[float], fuse=True) ->  List[List[ImageResult]]:
+    if ( len(list_results) != len (weight_list) ):
+        return []
+
+    print("Num modalities: ", len(list_results) )
+    print("Weight dict: ", weight_list)
+    
+    weighted_modality_results = []
+
+    for results, weight in zip(list_results, weight_list):
+        if weight <= 0:
+            continue  # Skip if weight is zero or negative
+        
+        if fuse:
+            weighted_results = get_weighted_results_fuse(results, weight)
+        else:
+            weighted_results = get_weighted_results_quantity(results, weight)
+
+        # Keep each modality separate
+        weighted_modality_results.append(weighted_results)
+
+    return weighted_modality_results
+
+
+
+
+def apply_bonus_obj():
     pass
 
 

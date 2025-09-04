@@ -29,7 +29,7 @@ async def call_asr_search(value: str, top_k: int) -> List[dict]:
     return data.get("results", []) if data else []
 
 
-async def call_image_upload(image_file: Any, top_k: int) -> List[dict]:
+async def call_image_search(image_file: Any, top_k: int) -> List[dict]:
     async with httpx.AsyncClient() as client:
         files = {
             "image_file": (

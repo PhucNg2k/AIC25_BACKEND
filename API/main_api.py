@@ -14,7 +14,7 @@ from typing import List, Optional, Annotated
 
 from models.response import SearchResponse
 from models.entry_models import SearchEntryRequest, StageModalities
-from search_utils import call_text_search, call_ocr_search, call_asr_search, call_image_upload
+
 
 # Routers & shared models (already defined in routes/search_routes.py)
 from routes.submit_csv_routes import router as submit_csv_router
@@ -23,8 +23,14 @@ from routes.es_routes import router as es_router
 
 from retrieve_vitL import index as search_index, metadata as search_metadata
 
-from utils import get_intersection_results, sort_descending_results
-from itertools import chain
+from results_utils import discard_duplicate_frame
+from utils import normalize_score, sort_score_results
+
+
+
+from results_utils import process_one_stage
+
+
 
 app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
 
@@ -48,53 +54,32 @@ async def root():
     return {"message": "Text-to-Image Retrieval API is running", "status": "healthy"}
 
 @app.post("/search-entry", response_model=SearchResponse)
-async def search_entry(request: Request):
+async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Request):
     try:
         collected_results = []
-        # If multipart form-data is sent (UI path): parse stage_list JSON and per-stage image files
-        if request.headers.get("content-type", "").startswith("multipart/form-data"):
-            form = await request.form()
-            top_k = int(form.get("top_k", 30))
-            stage_list_str = form.get("stage_list")
-            if stage_list_str:
-                try:
-                    stage_list_obj = json.loads(stage_list_str)
-                except Exception:
-                    raise HTTPException(status_code=400, detail="Invalid stage_list JSON in form-data")
 
-                entry = SearchEntryRequest(stage_list=stage_list_obj, top_k=top_k)
-                stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
-                for stage_key, modalities in stage_items:
-                    if not isinstance(modalities, StageModalities):
-                        continue
+        # Access raw form for files while using parsed model for fields
+        form = await request.form()
+        stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
 
-                    if modalities.text and modalities.text.value:
-                        text_results = await call_text_search(modalities.text.value, entry.top_k)
-                        if text_results:
-                            collected_results.append(text_results)
+        for stage_key, modalities in stage_items:
+            print("Processing stage: ", stage_key)
+            stage_result = await process_one_stage(modalities, form, entry.top_k)
+            if stage_result is not None:
+                stage_result = normalize_score(stage_result)
+                collected_results.append(stage_result)
 
-                    if modalities.ocr and modalities.ocr.value:
-                        ocr_results = await call_ocr_search(modalities.ocr.value, entry.top_k)
-                        if ocr_results:
-                            collected_results.append(ocr_results)
 
-                    if modalities.asr and modalities.asr.value:
-                        asr_results = await call_asr_search(modalities.asr.value, entry.top_k)
-                        if asr_results:
-                            collected_results.append(asr_results)
+        if len(stage_items) > 1:
+            flat_results = []
+            for stage_results in collected_results:
+                flat_results.extend(stage_results)  # will need chaining algorithm,
+        else:
+            flat_results = collected_results[0] if collected_results else []
 
-                    if modalities.img and modalities.img.value:
-                        # UI sets img.value to the field name (e.g., img_1). Retrieve that file from form-data
-                        field_name = modalities.img.value
-                        img_file = form.get(field_name)
-                        if img_file is not None:
-                            img_results = await call_image_upload(img_file, entry.top_k)
-                            if img_results:
-                                collected_results.append(img_results)
-
-        flat_results = list(chain.from_iterable(collected_results)) if collected_results else []
-        sorted_results = sort_descending_results(flat_results)
-
+        flat_results = discard_duplicate_frame(flat_results)
+        sorted_results = sort_score_results(flat_results, reverse=True)
+        
         return SearchResponse(
             success=len(sorted_results) > 0,
             query="multi-modal search",
