@@ -21,3 +21,6 @@ def get_video_fps(meta_key):
 
 def get_frame_path(meta_key):
     return video_metadata.get(meta_key, {}).get('frame_path', None)
+
+def get_video_duration(meta_key):
+    return video_metadata.get(meta_key, {}).get('video_duration', None)
