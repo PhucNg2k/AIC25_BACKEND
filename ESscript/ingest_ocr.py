@@ -16,10 +16,7 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from Code.API.ElasticSearch.ESclient import OCRClient
-
-DATA_PATH = "../REAL_DATA/ocr_b1"
-
+from API.ElasticSearch.ESclient import OCRClient
 ocr_client = OCRClient(
             hosts=[es_url], 
             api_key=es_api_key, 
@@ -28,13 +25,20 @@ ocr_client = OCRClient(
 
 ocr_client.create_index(force=True)
 
+target_folder = ['ocr_b1', 'ocr_b2']
+for folder in target_folder:
+    DATA_PATH = f"../../REAL_DATA/{folder}"
+    
+    if (not os.path.exists(DATA_PATH)):
+        print("\nSkipping: ", DATA_PATH )
+        continue
+    print("\nProcessing: ", folder)
+    for xlfile in sorted(os.listdir(DATA_PATH)):
+        filepath = os.path.join(DATA_PATH, xlfile)
+        print("\nProcessing: ", filepath)
+        df = pd.read_excel(filepath)
+        ocr_client.bulk_index_from_dataframe(df)
+        print("Ingested: ", filepath)
 
-for xlfile in sorted(os.listdir(DATA_PATH)):
-    filepath = os.path.join(DATA_PATH, xlfile)
-    print("\nProcessing: ", filepath)
-    df = pd.read_excel(filepath)
-    ocr_client.bulk_index_from_dataframe(df)
-    print("Ingested: ", filepath)
 
-
-print("Ingesting OCR done")
+    print("Ingesting OCR done")
