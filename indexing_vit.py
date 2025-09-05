@@ -39,7 +39,6 @@ for folder in taget_folder:
     print(folder)
     
     for idx, embedding in enumerate(feat_data):
-        print(embedding.shape)
         index.add(process_feat(embedding))
         
         frame_data = keyframe_mapping[idx]

@@ -18,10 +18,10 @@ print('OpenCLIP version:', open_clip.__version__)
 
 
 CONFIG = {
-    'root_path': '/kaggle/input/first-batch-keyframes/keyframes',
+    'root_path': '/kaggle/input/second-batch-keyframes/Keyframes_Batch_2',
     'output_dir': 'extracted_features',
-    'model_name': 'ViT-L-14',
-    'pretrained': 'openai',
+    'model_name': 'ViT-H-14',
+    'pretrained': 'laion2b_s32b_b79k',
     'batch_size': 32, 
     'num_workers': 4,
     'image_size': 224,

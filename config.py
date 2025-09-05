@@ -5,7 +5,7 @@ FAISS_SAVE_DIR  = "FaissIndex"
 INDEX_SAVE_PATH = "faiss_index_vitL.bin"
 METADATA_AVE_PATH = "id_to_name_vitL.json"
 
-CLIP_EMBED_DIM = 768
+CLIP_EMBED_DIM = 1024
 
 
 
