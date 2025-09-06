@@ -52,9 +52,6 @@ def get_weighted_results_fuse(frame_list: List[ImageResult], weight_score: float
 def get_weighted_union_results(list_results: List[List[ImageResult]], weight_list: List[float], fuse=True) ->  List[List[ImageResult]]:
     if ( len(list_results) != len (weight_list) ):
         return []
-
-    print("Num modalities: ", len(list_results) )
-    print("Weight dict: ", weight_list)
     
     weighted_modality_results = []
 

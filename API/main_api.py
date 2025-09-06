@@ -23,8 +23,8 @@ from routes.es_routes import router as es_router
 
 from retrieve_vitL import index as search_index, metadata as search_metadata
 
-from results_utils import discard_duplicate_frame
-from utils import normalize_score, sort_score_results
+from results_utils import discard_duplicate_frame, events_chain, update_temporal_score
+from utils import normalize_score, sort_score_results, get_weighted_union_results
 
 
 
@@ -63,21 +63,30 @@ async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Re
         stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
 
         for stage_key, modalities in stage_items:
-            print("Processing stage: ", stage_key)
+            print("\nProcessing stage: ", stage_key)
             stage_result = await process_one_stage(modalities, form, entry.top_k)
             if stage_result is not None:
                 stage_result = normalize_score(stage_result)
                 collected_results.append(stage_result)
+                
+        flat_results = None
 
-
+        # apply event-chaining for multi-stage
         if len(stage_items) > 1:
-            flat_results = []
-            for stage_results in collected_results:
-                flat_results.extend(stage_results)  # will need chaining algorithm,
-        else:
+            #flat_results = []
+            #for stage_results in collected_results:
+            #    flat_results.extend(stage_results)  # will need chaining algorithm,
+            weight_list = [0.6] * len(stage_items) # keep top highest 60% quantity
+            weighted_res_quant = get_weighted_union_results(collected_results, weight_list, fuse=False)
+            event_seqs = events_chain(weighted_res_quant)
+            print("EVENT CHAINED DONE !")
+            flat_results = update_temporal_score(event_seqs)
+                
+        else: # single stage
             flat_results = collected_results[0] if collected_results else []
 
         flat_results = discard_duplicate_frame(flat_results)
+        flat_results = normalize_score(flat_results)
         sorted_results = sort_score_results(flat_results, reverse=True)
         
         return SearchResponse(

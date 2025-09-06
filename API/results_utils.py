@@ -108,22 +108,20 @@ async def process_one_stage(modalities: StageModalities, form, top_k: int):
     
     # Process results and apply weights
     results, record_order = await process_search_results(tasks, modalities)
-    print('Processed search results')
+
     results = reorder_modal_results(results, record_order)
-    print("Reordered")
+
     if len(results) > 1:
-        print("Runnng temporal chain")
         temporal_chain_results = temporal_chain(results, 2) 
         res_temporal_chain = update_temporal_score(temporal_chain_results)
     else: 
         res_temporal_chain = results[0]
 
-    print("returning results")
     return res_temporal_chain
 
 
 def temporal_chain(stages: List[List[ImageResult]], window_s: float) -> List[ImageResult]:
-    """Create temporal chains across multiple stages"""
+    print("PERFORMING TEMPORAL CHAIN")
     seqs = []
     for hit in stages[0]:
         best = [(hit, hit['score'])]
@@ -148,3 +146,29 @@ def temporal_chain(stages: List[List[ImageResult]], window_s: float) -> List[Ima
 
     return sorted_seqs            
 
+
+def events_chain(stages: List[List[ImageResult]]) -> List[ImageResult]:
+    print("\nPERFORMING EVENT CHAINING")
+    seqs = []
+    for hit in stages[0]:
+        best = [(hit, hit['score'])]
+        cur = hit
+        ok = True
+
+        for i in range(1, len(stages)):
+            cands = [ h for h in stages[i]
+                     if h['video_name'] == cur['video_name'] and (h['pts_time'] > cur['pts_time'])]
+            
+            if not cands:
+                ok = False 
+                break # stop the next of current video
+
+            nxt = max(cands, key=lambda h: h['score'] + best[-1][1]) # add last score in chain
+            best.append( (nxt, best[-1][1] + nxt['score']) )
+            cur = nxt
+        if ok:
+            seqs.append(best)
+
+    sorted_seqs = sorted(seqs, key=lambda seq: seq[-1][1], reverse=True)
+
+    return sorted_seqs
