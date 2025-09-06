@@ -137,7 +137,7 @@ def search_query(text_query: str, index, metadata, top_k: int = 10) -> list[Imag
     
             frame_idx = int(frame_f[1:])
             
-            image_path = os.path.join(DATA_SOURCE, frame_path) ####
+            image_path = f"{DATA_SOURCE}/{frame_path}" ####
             
             # Convert inner product to similarity score (0-100%)
             # For normalized vectors, inner product ranges from -1 to 1
