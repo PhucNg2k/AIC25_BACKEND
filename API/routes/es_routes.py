@@ -14,6 +14,7 @@ if ROOT_DIR not in sys.path:
 
 from dependecies import OCRClientDeps, ASRClientDeps
 from utils import convert_ImageList
+from group_utils import get_group_frames
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -67,14 +68,15 @@ def make_ocr_search_body(query_text, top_k = 50, fuzziness="AUTO"):
     return search_body
 
 @router.post("/video_name", response_model=SearchResponse)
-async def search_video_name(request: SearchRequest, es_client: OCRClientDeps):
+async def search_video_name(request: SearchRequest):
     try:
         query_text = request.value
         top_k = request.top_k
         
-        search_body = make_videoname_search_body(query_text, top_k)
+        #search_body = make_videoname_search_body(query_text, top_k)
+        #raw_results = es_client.search_parsed(search_body)
+        raw_results = get_group_frames(query_text)
 
-        raw_results = es_client.search_parsed(search_body)
 
         results = convert_ImageList(raw_results)
 

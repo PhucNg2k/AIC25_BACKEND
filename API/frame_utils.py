@@ -9,7 +9,6 @@ with open(FRAME_METADATA_FILE, 'r') as f:
 def get_metakey(video_name: str, frameIdx: int):
     return f"{video_name}_{frameIdx:06d}"
 
-
 def get_frame_idx(meta_key):
     return video_metadata.get(meta_key, {}).get('frame_idx', None)
 
