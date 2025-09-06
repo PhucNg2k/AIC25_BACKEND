@@ -1,69 +1,37 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import List
 import os
-import csv
-import json
+import sys
 
 # Resolve paths relative to the API directory
 API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CODE_DIR = os.path.dirname(os.path.abspath(API_DIR))
+ROOT_DIR = os.path.dirname(os.path.abspath(API_DIR))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+from fastapi import APIRouter, HTTPException
+
+import csv
+import json
+import shutil
+
+from utils import parse_frame_file
+from models.csv import *
+from models.response import *
+
+
 
 SUBMIT_FOLER = "Results"
 
-CSV_DIR = os.path.join(CODE_DIR, SUBMIT_FOLER, "submission")
-CSV_MAPPING = os.path.join(CODE_DIR, SUBMIT_FOLER, "csv_mapping.json")
+CSV_DIR = os.path.join(ROOT_DIR, SUBMIT_FOLER, "submission")
+CSV_MAPPING = os.path.join(ROOT_DIR, SUBMIT_FOLER, "csv_mapping.json")
+
+if os.path.exists(CSV_DIR):
+    shutil.rmtree(CSV_DIR)
 
 os.makedirs(CSV_DIR, exist_ok=True)
-
-# Utilities: simple, script-friendly import
-import sys as _sys
-_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-_API_DIR = os.path.dirname(_CURRENT_DIR)
-if _API_DIR not in _sys.path:
-    _sys.path.append(_API_DIR)
-from utils import parse_frame_file
-
+with open(CSV_MAPPING, 'w') as f:
+    json.dump({}, f, indent=4)
 
 router = APIRouter(prefix="/submitCSV", tags=["submitCSV"])
-
-
-class MakeCSV_Response(BaseModel):
-    success: bool
-    message: str
-    query_id: str
-    csv_file: str
-    total_frames: int
-
-
-class KIS_rq_CSV(BaseModel):
-    query_id: str
-    query_str: str
-    selected_frames: List[str]
-
-
-class QADataItem(BaseModel):
-    video_name: str
-    frame_idx: int
-    answer: str
-
-
-class QA_CSV_Request(BaseModel):
-    query_id: str
-    query_str: str
-    qa_data: List[QADataItem]
-
-
-class TrakeVideoEntry(BaseModel):
-    video_name: str
-    frames: List[int]
-
-
-class TRAKE_CSV_Request(BaseModel):
-    query_id: str
-    query_str: str
-    trake_data: List[TrakeVideoEntry]
-
 
 def check_query_id_exists(query_id_key: str) -> bool:
     if os.path.exists(CSV_MAPPING):

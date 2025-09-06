@@ -1,5 +1,5 @@
 .vscode
-.env
+.env*
 __pycache__
 
 
@@ -12,3 +12,5 @@ Experiment/
 Results/
 
 be
+
+static

@@ -1,44 +1,25 @@
-from typing import Annotated
-import io
-from PIL import Image
-import numpy as np
+from models.request import *
+from models.response import *
 
-import math
-from models import ImageResult, SearchResponse, SearchRequest
+from fastapi import  HTTPException, APIRouter
 
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, Body
-from fastapi.middleware.cors import CORSMiddleware
-import sys, os
+import sys
+import os
 
-# Ensure project root is importable when running: python search_api.py
-API_DIR = os.path.dirname(os.path.abspath(__file__))
+# Parent directory to import retrieve module, make script-friendly
+API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from dependecies import OCRClientDep, ASRClientDep
-from config import DATA_SOURCE
-
+from dependecies import OCRClientDeps, ASRClientDeps
+from utils import convert_ImageList
 from dotenv import load_dotenv
 load_dotenv()
 
 
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,   # "*" + credentials=True is blocked by browsers
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-def convert_ImageList(raw_results):
-    results = []
-    for raw_result in raw_results:
-        result = ImageResult(**raw_result)
-        results.append(result)
-    return results
+router = APIRouter(prefix="/es-search", tags=["elastic search"])
 
 def make_videoname_search_body(query_text, top_k):
     if not top_k or top_k <= 0:
@@ -85,10 +66,10 @@ def make_ocr_search_body(query_text, top_k = 50, fuzziness="AUTO"):
     }
     return search_body
 
-@app.post("/video_name", response_model=SearchResponse)
-async def search_video_name(request: SearchRequest, es_client: OCRClientDep):
+@router.post("/video_name", response_model=SearchResponse)
+async def search_video_name(request: SearchRequest, es_client: OCRClientDeps):
     try:
-        query_text = request.query
+        query_text = request.value
         top_k = request.top_k
         
         search_body = make_videoname_search_body(query_text, top_k)
@@ -99,10 +80,10 @@ async def search_video_name(request: SearchRequest, es_client: OCRClientDep):
 
         return SearchResponse(
             success=True,
-            query=request.query.strip(),
+            query=request.value.strip(),
             results=results,
             total_results=len(results),
-            message=f"Found {len(results)} results for query: '{request.query.strip()}'"
+            message=f"Found {len(results)} results for query: '{request.value.strip()}'"
         )
     except Exception as e:
         # Log the actual error for debugging
@@ -111,10 +92,10 @@ async def search_video_name(request: SearchRequest, es_client: OCRClientDep):
 
         
 
-@app.post("/ocr", response_model=SearchResponse)
-async def search_ocr(request: SearchRequest, es_client: OCRClientDep):
+@router.post("/ocr", response_model=SearchResponse)
+async def search_ocr(request: SearchRequest, es_client: OCRClientDeps):
     try:
-        query_text = request.query
+        query_text = request.value
         top_k = request.top_k
         
         search_body = make_ocr_search_body(query_text, top_k)
@@ -125,21 +106,13 @@ async def search_ocr(request: SearchRequest, es_client: OCRClientDep):
 
         return SearchResponse(
             success=True,
-            query=request.query.strip(),
+            query=request.value.strip(),
             results=results,
             total_results=len(results),
-            message=f"Found {len(results)} results for query: '{request.query.strip()}'"
+            message=f"Found {len(results)} results for query: '{request.value.strip()}'"
         )
     except Exception as e:
         # Log the actual error for debugging
         print(f"Error in search_ocr: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
 
-        
-
-
-if __name__ == "__main__":
-    import uvicorn
-    print("Starting Text-to-Image Retrieval API...")
-    print("API Documentation: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=8000)

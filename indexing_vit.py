@@ -2,17 +2,18 @@ import numpy as np
 import faiss
 import os
 import json
+from config import CLIP_EMBED_DIM
+
+
 
 id_to_name = {} 
-
 faiss_save_dir  = "FaissIndex" 
+
 index_save_path = "faiss_index_vitL.bin"
 metadata_save_path = "id_to_name_vitL.json"
 
 # Create faiss save directory if it doesn't exist
 os.makedirs(faiss_save_dir, exist_ok=True)
-
-DATA_FOLDER = "../REAL_DATA/vit-batch1/extracted_features/all_features.npy"
 
 def process_feat(feat):
     feat = feat.astype(np.float32)  # ensure float32 before normalize
@@ -21,27 +22,33 @@ def process_feat(feat):
     return feat
 
 idx_num = 0
+index = faiss.IndexFlatIP(CLIP_EMBED_DIM)  # Inner Product for cosine similarity
 
+taget_folder = ['vit-batch1', 'vit-batch2']
 
-N_DIM = 768
-index = faiss.IndexFlatIP(N_DIM)  # Inner Product for cosine similarity
+for folder in taget_folder:
+    BASE_PATH = f"../REAL_DATA/{folder}/extracted_features"
 
-feat_data = np.load(DATA_FOLDER)
+    ALL_FEAT_FILE = os.path.join(BASE_PATH, "all_features.npy" )
 
+    feat_data = np.load(ALL_FEAT_FILE)
 
-with open("../REAL_DATA/vit-batch1/extracted_features/all_keyframes_mapping.json", 'r') as f:
-    keyframe_mapping = json.load(f) 
+    with open(os.path.join(BASE_PATH, "all_keyframes_mapping.json"), 'r') as f:
+        keyframe_mapping = json.load(f) 
 
-for idx, embedding in enumerate(feat_data):
-    index.add(process_feat(embedding))
+    print(folder)
     
-    frame_data = keyframe_mapping[idx]
-    frame_path = frame_data['image_path']
+    for idx, embedding in enumerate(feat_data):
+        index.add(process_feat(embedding))
+        
+        frame_data = keyframe_mapping[idx]
+        frame_path = frame_data['image_path']
 
-    image_path = frame_path.split("/")[-3:]
-    image_path = "/".join(image_path)
+        image_path = frame_path.split("/")[-3:]
+        image_path = "/".join(image_path)
 
-    id_to_name[idx] = image_path
+        id_to_name[idx_num] = image_path
+        idx_num+=1
 
 
 def save_index_and_metadata(index, metadata):
