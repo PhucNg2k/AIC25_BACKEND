@@ -11,7 +11,7 @@ class BBox(BaseModel):
 
 
 class ClassMask(BaseModel):
-    n_count: int
+    count_condition: str
     bbox: List[BBox]
 
 class ModalityPayload(BaseModel):
