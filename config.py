@@ -14,9 +14,13 @@ FAISS_SAVE_DIR  = "FaissIndex"
 INDEX_SAVE_PATH = "faiss_index_vitL.bin"
 METADATA_AVE_PATH = "id_to_name_vitL.json"
 
-CLIP_EMBED_DIM = 1024
+CLIP_EMBED_DIM_H = 1024
+
 
 LLM_MODEL = "gemini-2.5-flash"
 OCR_INDEX_NAME='ocr_index_v2'
 ASR_INDEX_NAME = 'asr_index_chunked'
 
+OCR_INDEX_NAME='ocr_index_v2'
+
+CLIP_EMBED_DIM_L = 768

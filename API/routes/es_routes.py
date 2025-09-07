@@ -27,6 +27,9 @@ from asr_tools import get_estimate_keyframes
 router = APIRouter(prefix="/es-search", tags=["elastic search"])
 
 def make_videoname_search_body(query_text, top_k):
+    """
+    Builds an Elasticsearch query to search by video_name using both match and wildcard.
+    """
     if not top_k or top_k <= 0:
         top_k=10000
 

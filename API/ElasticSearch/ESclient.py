@@ -16,6 +16,17 @@ if API_DIR not in sys.path:
 #from load_embed_model import get_asr_embedding
 
 from frame_utils import get_metakey, get_pts_time, get_frame_path
+
+API_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(API_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+# API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# if API_DIR not in sys.path:
+#     sys.path.append(API_DIR)
+
 DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
 
 class ESClientBase(ABC):
@@ -180,7 +191,23 @@ class ESClientBase(ABC):
         body: Dict[str, Any],
         top_k: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        resp = self.search(body=body, top_k=top_k)
+        """
+        body: defined in es_routes.py. Take body of OCR for example:
+            search_body =  {
+                "query": {
+                    "match": {
+                        "text": {
+                            "query": query_text,
+                            "fuzziness": fuzziness
+                        }
+                    }
+                },
+                "size": top_k,
+                "_source": ["video_folder", "video_name", "frame_id", "text"]
+            }
+        """ 
+        # return dict containing raw elastic search {'hits', 'scores', 'source document'}
+        resp = self.search(body=body, top_k=top_k) 
         results = self.parse_hits(resp)
         
         return results

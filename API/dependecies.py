@@ -94,6 +94,10 @@ async def get_llm_client():
 
 
 
+
+
+# depends: Tells FastAPI: run that function before handling the request, and inject its return value as the parameter.
+
 search_resource_Deps = Annotated[dict, Depends(get_search_resources)]
 
 OCRClientDeps = Annotated[OCRClient, Depends(get_ocr_client)]
