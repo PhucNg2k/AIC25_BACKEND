@@ -1,14 +1,8 @@
 from typing import Annotated, Any
 from fastapi import Depends, HTTPException
 from retrieve_vitL import index, metadata
-from elasticsearch import Elasticsearch
 import os
-from dotenv import load_dotenv
-from ElasticSearch.ESclient import ESClientBase, OCRClient, ASRClient
-
-
-load_dotenv()
-
+from ElasticSearch.ESclient import OCRClient, ASRClient
 
 OCR_INDEX_NAME = 'ocr_index'
 ASR_INDEX_NAME = 'asr_index'
@@ -26,23 +20,20 @@ async def get_search_resources():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
+# dependecies.py
+def get_es_config():
+    # swap this body to read from AWS SM, Vault, etc.
+    return {
+        "hosts": [os.getenv("ES_LOCAL_URL")],
+        "api_key": os.getenv("ES_LOCAL_API_KEY"),
+    }
 
 async def get_es_client():
-    """Dependency to provide Elasticsearch client"""
     try:
-        es_url = os.getenv("ES_LOCAL_URL")
-        es_api_key = os.getenv("ES_LOCAL_API_KEY")
-        
-        if not es_url:
-            raise HTTPException(status_code=500, detail="ES_LOCAL_URL environment variable not set")
-        if not es_api_key:
-            raise HTTPException(status_code=500, detail="ES_LOCAL_API_KEY environment variable not set")
-        
-        # Return connection info instead of client instance
-        yield {
-            "hosts": [es_url],
-            "api_key": es_api_key
-        }
+        cfg = get_es_config()
+        if not cfg["hosts"][0] or not cfg["api_key"]:
+            raise HTTPException(status_code=500, detail="Missing ES config")
+        yield cfg
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Elasticsearch connection error: {str(e)}")
 

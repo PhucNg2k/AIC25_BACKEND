@@ -15,9 +15,6 @@ if ROOT_DIR not in sys.path:
 from dependecies import OCRClientDeps, ASRClientDeps
 from utils import convert_ImageList
 from group_utils import get_group_frames
-from dotenv import load_dotenv
-load_dotenv()
-
 
 
 router = APIRouter(prefix="/es-search", tags=["elastic search"])
@@ -76,12 +73,10 @@ async def search_video_name(request: SearchRequest):
         #search_body = make_videoname_search_body(query_text, top_k)
         #raw_results = es_client.search_parsed(search_body)
         raw_results = get_group_frames(query_text)
-
-
         results = convert_ImageList(raw_results)
 
         return SearchResponse(
-            success=True,
+            success=len(results) > 0,
             query=request.value.strip(),
             results=results,
             total_results=len(results),

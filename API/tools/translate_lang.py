@@ -1,26 +1,35 @@
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-import torch
+import os
+import sys
+from dotenv import load_dotenv
 
-# Check device availability
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
+from google import genai
+from google.genai import types  
 
-model_name = "VietAI/envit5-translation"
-tokenizer = AutoTokenizer.from_pretrained(model_name)  
-model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+# Ensure project root is importable when running: python search_api.py
+TOOLS_DIR = os.path.dirname(os.path.abspath(__file__))
+API_DIR = os.path.dirname(TOOLS_DIR)
+ROOT_DIR = os.path.dirname(API_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 
-# Move model to device
-model = model.to(device)
+load_dotenv()
+
+
+# The client gets the API key from the environment variable `GEMINI_API_KEY`.
+client = genai.Client()
 
 def main():
-    inputs ="en: We're on a jorney to advance and demoratize artificial intelligece through open source and open science."
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        config=types.GenerateContentConfig(
+            system_instruction="You are a cat. Your name is Neko."),
+        contents="Hello there"
+    )      
+    
+    print(response.text)
+    
+    return
 
-
-    outputs = model.generate(tokenizer(inputs, return_tensors="pt", padding=True).input_ids.to(device), max_length=512)
-    result = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-
-    for res in result:
-        print(res)
 
 if __name__ == "__main__":
     main()

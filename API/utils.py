@@ -2,6 +2,9 @@ from typing import Tuple, List
 from models.response import ImageResult
 
 def convert_ImageList(raw_results):
+    if len(raw_results) <= 0:
+        return []
+    
     results = []
     for raw_result in raw_results:
         result = ImageResult(**raw_result)

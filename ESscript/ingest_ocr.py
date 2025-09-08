@@ -3,18 +3,16 @@ import os
 import pandas as pd
 
 from elasticsearch.exceptions import RequestError
-from getpass import getpass
 import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 
 load_dotenv()
 es_url = os.getenv("ES_LOCAL_URL")
 es_api_key = os.getenv("ES_LOCAL_API_KEY")
-
-
-API_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(API_DIR)
-if ROOT_DIR not in sys.path:
-    sys.path.append(ROOT_DIR)
 
 from API.ElasticSearch.ESclient import OCRClient
 ocr_client = OCRClient(

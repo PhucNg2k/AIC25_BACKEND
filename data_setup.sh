@@ -4,7 +4,7 @@
 # This will move files from Data/Videos_*/video/*.mp4 to Data/video/*.mp4
 
 # Set the base directory
-BASE_DIR="../Data"
+BASE_DIR="../REAL_DATA/Data"
 VIDEOS_DIR="$BASE_DIR/video"
 
 # Create the central video directory if it doesn't exist
@@ -18,7 +18,7 @@ skipped_count=0
 echo "Starting to consolidate video files..."
 
 # Find all Videos_* directories
-for videos_folder in "$BASE_DIR"/Videos_*; do
+for videos_folder in "$VIDEOS_DIR"/Videos_*; do
     if [ -d "$videos_folder" ]; then
         echo "Processing: $videos_folder"
         

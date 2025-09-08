@@ -1,10 +1,13 @@
 import sys, os
+from dotenv import load_dotenv
 
-# Ensure project root is importable when running: python search_api.py
+# Ensure project root is importable when running: python main_api.py
 API_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
+
+load_dotenv()
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,10 +29,7 @@ from retrieve_vitL import index as search_index, metadata as search_metadata
 from results_utils import discard_duplicate_frame, events_chain, update_temporal_score
 from utils import normalize_score, sort_score_results, get_weighted_union_results
 
-
-
 from results_utils import process_one_stage
-
 
 
 app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
