@@ -23,6 +23,8 @@ from models.entry_models import SearchEntryRequest, StageModalities
 from routes.submit_csv_routes import router as submit_csv_router
 from routes.search_routes import router as search_router
 from routes.es_routes import router as es_router
+from routes.llm_routes import router as llm_router
+
 
 from retrieve_vitL import index as search_index, metadata as search_metadata
 
@@ -38,6 +40,7 @@ app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
 app.include_router(search_router)
 app.include_router(submit_csv_router)
 app.include_router(es_router)
+app.include_router(llm_router)
 
 # CORS: if you need cookies/Authorization headers, replace ["*"] with your exact origins
 app.add_middleware(

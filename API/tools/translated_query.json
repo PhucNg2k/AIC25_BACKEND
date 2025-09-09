@@ -1,0 +1,29 @@
+{
+  "query-p2-3-qa": [
+    "1. A clip shows a cultural-tourism exhibition booth. In the center, a map of Vietnam is made from yellow and brown fruits. In front, two presenters stand: a girl wears traditional brown ethnic attire with a blue, pink, and purple bib sash; a man wears a dark blue t-shirt and light-colored pants. Above, the Vietnamese national flag hangs centrally."
+  ],
+  "query-p2-1-kis": [
+    "1. Many people wear red flag shirts with yellow stars. They stand before a giant crab symbol.",
+    "2. All people wear hats. Some people wear checkered scarves around their necks."
+  ],
+  "query-p2-11-kis": [
+    "1. An elderly woman reads a book.",
+    "2. A string of beads is on her hand.",
+    "3. The woman opens a book.",
+    "4. The book cover features a black and white portrait of an old person.",
+    "5. White text appears above the portrait.",
+    "6. The book cover is predominantly earth yellow."
+  ],
+  "query-p2-22-trake": [
+    "1. Security camera records a search.",
+    "(E1: Police officer waves suspect into room -> Officer waves hand to direct suspect into room)",
+    "(E2: After entering room, officer gestures hand to standing position -> First scene of officer performing hand gesture)",
+    "(E2: Officer conducts a sweep check -> First moment officer fully bends down for sweep check)"
+  ],
+  "query-p2-28-kis": [
+    "1. The video displays various ornamental fish species.",
+    "2. Discus fish, arowana, and other fish types are present.",
+    "3. Some scenes feature flowerhorn cichlids.",
+    "4. The flowerhorn cichlids have very large heads."
+  ]
+}

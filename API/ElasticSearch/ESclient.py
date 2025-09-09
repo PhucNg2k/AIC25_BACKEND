@@ -156,7 +156,7 @@ class ESClientBase(ABC):
                 doc = self.convert_row_to_document(row)
                 if doc:  # Skip invalid documents
                     documents.append(doc)
-
+            print('DOCUMENT: ', len(documents))
             return self.bulk_index(documents, batch_size)
         except Exception as e:
             print(f"❌ Error converting DataFrame to documents: {e}")
@@ -230,7 +230,15 @@ class OCRClient(ESClientBase):
             # Handle different column layouts
             df_columns = row.index.tolist()
             
-            if 'group' not in df_columns:
+            required = ['video_folder', 'video_name', 'frame_id', 'text']
+            if all(col in df_columns for col in required):
+                doc = {
+                    "video_folder": str(row.get('video_folder', '')),
+                    "video_name": str(row.get('video_name', '')),
+                    "frame_id": str(row.get('frame_id', '')),
+                    "text": str(row.get('text', ''))
+                }
+            elif 'group' not in df_columns:
                 doc = {
                     "video_folder": str(row.get('video', '')),
                     "video_name": str(row.get('image', '')),

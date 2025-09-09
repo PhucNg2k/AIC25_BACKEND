@@ -18,12 +18,12 @@ from API.ElasticSearch.ESclient import OCRClient
 ocr_client = OCRClient(
             hosts=[es_url], 
             api_key=es_api_key, 
-            index_name='ocr_index'
+            index_name='ocr_index_chunked'
         )
 
 ocr_client.create_index(force=True)
 
-target_folder = ['ocr_b1', 'ocr_b2']
+target_folder = ['ocr_b1_chunked', 'ocr_b2_chunked']
 for folder in target_folder:
     DATA_PATH = f"../../REAL_DATA/{folder}"
     
