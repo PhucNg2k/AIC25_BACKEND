@@ -8,6 +8,9 @@ from utils import normalize_score, get_weighted_union_results
 
 MODAL_ORDER = ['text', 'img', 'ocr', 'asr', 'localized']
 
+# Sentinel value for atemporal results (e.g., ASR without timestamps)
+ATEMPORAL_TIME = -1.0
+
 def reorder_modal_results(modalities: List[List[ImageResult]], record_order: List[str]) -> List[List[ImageResult]]:
     """Reorder modality results to match MODAL_ORDER"""
     final_res = []
@@ -120,7 +123,7 @@ async def process_one_stage(modalities: StageModalities, form, top_k: int):
     return res_temporal_chain
 
 
-def temporal_chain(stages: List[List[ImageResult]], window_s: float) -> List[ImageResult]:
+def temporal_chain(stages: List[List[ImageResult]], window_s: float = 2) -> List[ImageResult]:
     print("PERFORMING TEMPORAL CHAIN")
     seqs = []
     for hit in stages[0]:
@@ -129,9 +132,19 @@ def temporal_chain(stages: List[List[ImageResult]], window_s: float) -> List[Ima
         ok = True
 
         for i in range(1, len(stages)):
-            cands = [ h for h in stages[i]
-                     if h['video_name'] == cur['video_name'] and abs(h['pts_time'] - cur['pts_time']) <= window_s]
-            
+
+            cands = []
+            for h in stages[i]:
+                if h['video_name'] != cur['video_name']:
+                    continue
+                pts = float(h.get('pts_time', ATEMPORAL_TIME))
+                cur_pts = float(cur.get('pts_time', ATEMPORAL_TIME))
+                
+                if pts == ATEMPORAL_TIME or cur_pts == ATEMPORAL_TIME:
+                    cands.append(h)  # allow ASR/atemporal
+                elif abs(pts - cur_pts) <= window_s:
+                    cands.append(h)
+
             if not cands:
                 ok = False 
                 break # stop the next of current video
@@ -157,7 +170,7 @@ def events_chain(stages: List[List[ImageResult]]) -> List[ImageResult]:
 
         for i in range(1, len(stages)):
             cands = [ h for h in stages[i]
-                     if h['video_name'] == cur['video_name'] and (h['pts_time'] > cur['pts_time'])]
+                     if h['video_name'] == cur['video_name'] and (h['pts_time'] >= cur['pts_time'])]
             
             if not cands:
                 ok = False 

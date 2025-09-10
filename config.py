@@ -10,6 +10,7 @@ QUERY_SOURCE = os.path.join(WORKSPACE_ROOT, 'query-p2-groupA')
 
 LLM_MODEL = "gemini-2.5-flash"
 
+ASR_EMBED_MODEL = "intfloat/multilingual-e5-base"
 
 FAISS_SAVE_DIR  = "FaissIndex" 
 INDEX_SAVE_PATH = "faiss_index_vitL.bin"

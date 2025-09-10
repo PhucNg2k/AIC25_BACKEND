@@ -207,8 +207,8 @@ class OCRClient(ESClientBase):
                     "frame_id": {"type": "keyword"},
                     "text": {
                         "type": "text",
-                        "analyzer": "standard",
-                        "search_analyzer": "standard",
+                        "analyzer": "whitespace",       #keeps words as-is, no stemming
+                        "search_analyzer": "standard",  #still normalize queries
                         "fields": {
                             "keyword": {
                                 "type": "keyword",
@@ -295,32 +295,21 @@ class OCRClient(ESClientBase):
 
 
 class ASRClient(ESClientBase):
-    def __init__(self, hosts, api_key, index_name: str = "asr_index"):
+    def __init__(self, hosts, api_key, index_name: str = "asr_index", embedding_dims: int = 768):
         super().__init__(hosts, api_key, index_name)
+        self.embedding_dims = embedding_dims
 
     def get_mapping(self) -> Dict[str, Any]:
         """Return ASR index mapping"""
         return {
             "mappings": {
                 "properties": {
-                    "video_name": {"type": "keyword"},
-                    "start_ms": {"type": "long"},
-                    "end_ms": {"type": "long"},
-                    "text": {
-                        "type": "text",
-                        "analyzer": "standard",
-                        "search_analyzer": "standard",
-                        "fields": {
-                            "keyword": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
-                        }
-                    },
-                    "transcript": {
-                        "type": "text",
-                        "analyzer": "standard",
-                        "search_analyzer": "standard"
+                    "video_name":   {"type": "keyword"},
+                    "text":     {"type": "text"},
+                    "embedding": {
+                        "type": "dense_vector",
+                        "dims": self.embedding_dims,
+                        "index": False   # script_score requires index:false
                     }
                 }
             },
@@ -357,21 +346,18 @@ class ASRClient(ESClientBase):
             score = hit.get("_score", 0.0)
 
             video_name = src.get("video_name")
-            start_ms = src.get("start_ms")
-            end_ms = src.get("end_ms")
-            transcript = src.get("text") or src.get("transcript")
-
-            if video_name is None or start_ms is None or end_ms is None:
+            text_conent = src.get("text")
+    
+            if video_name is None or text_conent is None:
                 continue
 
             out.append({
                 "video_name": video_name,
-                "start_ms": int(start_ms),
-                "end_ms": int(end_ms),
-                "text": transcript,
+                "text": text_conent,
                 "score": score,
                 "raw": src,
             })
+            
         return out
     
 

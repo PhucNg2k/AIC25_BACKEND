@@ -15,6 +15,7 @@ es_url = os.getenv("ES_LOCAL_URL")
 es_api_key = os.getenv("ES_LOCAL_API_KEY")
 
 from API.ElasticSearch.ESclient import OCRClient
+
 ocr_client = OCRClient(
             hosts=[es_url], 
             api_key=es_api_key, 

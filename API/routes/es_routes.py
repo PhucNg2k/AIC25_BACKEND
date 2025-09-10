@@ -14,6 +14,7 @@ if ROOT_DIR not in sys.path:
 from dependecies import OCRClientDeps, ASRClientDeps
 from utils import convert_ImageList
 from group_utils import get_group_frames
+from load_embed_model import get_asr_embedding
 
 
 router = APIRouter(prefix="/es-search", tags=["elastic search"])
@@ -48,18 +49,72 @@ def make_videoname_search_body(query_text, top_k):
 
     return search_body
 
-def make_ocr_search_body(query_text, top_k = 50, fuzziness="AUTO"):
-    search_body =  {
+def make_ocr_search_body(query_text, top_k=50, fuzziness="AUTO"):
+    """
+    Build an Elasticsearch search body for OCR text search
+    with fuzzy matching + BM25 scoring.
+    """
+    search_body = {
         "query": {
-            "match": {
-                "text": {
-                    "query": query_text,
-                    "fuzziness": fuzziness
-                }
+            "bool": {
+                "should": [
+                    {
+                        "match": {
+                            "text": {
+                                "query": query_text,
+                                "operator": "and",      # all words must appear
+                                "boost": 2.0            # prioritize exact-ish matches
+                            }
+                        }
+                    },
+                    {
+                        "match": {
+                            "text": {
+                                "query": query_text,
+                                "fuzziness": fuzziness, # allow OCR typos
+                                "operator": "and"
+                            }
+                        }
+                    }
+                ]
             }
         },
         "size": top_k,
         "_source": ["video_folder", "video_name", "frame_id", "text"]
+    }
+    return search_body
+
+
+def make_asr_search_body(query_text, top_k=50, fuzziness="AUTO"):
+    query_vector = get_asr_embedding(query_text)
+    
+    search_body = {
+        "size": top_k,
+        "_source": ["video_name", "text"],
+        "query": {
+            "bool": {
+                "should": [
+                    {
+                        "match": {
+                            "text": {
+                                "query": query_text,
+                                "fuzziness": fuzziness,
+                                "boost": 2.0   # lexical importance
+                            }
+                        }
+                    },
+                    {
+                        "script_score": {
+                            "query": {"match_all": {}},
+                            "script": {
+                                "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
+                                "params": {"query_vector": query_vector}
+                            }
+                        }
+                    }
+                ]
+            }
+        }
     }
     return search_body
 
@@ -112,3 +167,32 @@ async def search_ocr(request: SearchRequest, es_client: OCRClientDeps):
         print(f"Error in search_ocr: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
 
+
+@router.post("/asr", response_model=SearchResponse)
+async def search_asr(request: SearchRequest, es_client: ASRClientDeps):
+    try:
+        query_text = request.value.strip()
+        top_k = request.top_k
+        
+        search_body = make_asr_search_body(query_text, top_k)
+
+        raw_results = es_client.search_parsed(search_body)
+
+        for res in raw_results:
+            res['frame_idx'] = -1
+            res['image_path'] = "/"
+            res['pts_time'] = -1
+            
+        results = convert_ImageList(raw_results)
+
+        return SearchResponse(
+            success=True,
+            query=request.value.strip(),
+            results=results,
+            total_results=len(results),
+            message=f"Found {len(results)} results for query: '{request.value.strip()}'"
+        )
+    except Exception as e:
+        # Log the actual error for debugging
+        print(f"Error in search_asr: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")

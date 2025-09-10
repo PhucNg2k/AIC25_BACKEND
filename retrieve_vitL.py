@@ -17,9 +17,6 @@ from API.frame_utils import get_metakey, get_pts_time, get_frame_path
 from PIL import Image
 import numpy as np
 
-
-
-
 def process_feat(feat):
     feat = feat.cpu().numpy().astype(np.float32)  # ensure float32 before normalize
     feat = feat.reshape(1, -1)  # reshape to 2D first

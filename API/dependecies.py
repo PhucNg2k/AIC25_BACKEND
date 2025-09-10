@@ -8,7 +8,7 @@ from google import genai
 
 LLM_MODEL = "gemini-2.5-flash"
 OCR_INDEX_NAME = 'ocr_index_chunked'
-ASR_INDEX_NAME = 'asr_index'
+ASR_INDEX_NAME = 'asr_index_chunked'
 
 async def get_search_resources():
     """Dependency to provide search resources"""
