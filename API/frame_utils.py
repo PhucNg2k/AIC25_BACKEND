@@ -16,7 +16,7 @@ def get_pts_time(meta_key):
     return video_metadata.get(meta_key, {}).get('pts_time', None)
 
 def get_video_fps(meta_key):
-    return video_metadata.get(meta_key, {}).get('fps', 30)
+    return video_metadata.get(meta_key, {}).get('fps', None)
 
 def get_frame_path(meta_key):
     return video_metadata.get(meta_key, {}).get('frame_path', None)

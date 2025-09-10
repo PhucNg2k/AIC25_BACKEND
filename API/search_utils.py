@@ -25,7 +25,7 @@ async def call_ocr_search(value: str, top_k: int) -> List[dict]:
 async def call_asr_search(value: str, top_k: int) -> List[dict]:
     # Placeholder mapping: reuse video_name search if ASR endpoint not available
     payload = {"value": value, "top_k": top_k}
-    data = await post_json("http://localhost:8000/es-search/video_name", payload)
+    data = await post_json("http://localhost:8000/es-search/asr", payload)
     return data.get("results", []) if data else []
 
 

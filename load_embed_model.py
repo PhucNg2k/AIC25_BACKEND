@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
 from model_loading import device
+from config import ASR_EMBED_MODEL
 
 def average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -> Tensor:
     last_hidden = last_hidden_states.masked_fill(~attention_mask[..., None].bool(), 0.0)
@@ -11,7 +12,7 @@ def average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -> Tensor:
 def get_asr_embedding(text: str):
     """Get E5 embedding for a passage chunk using HF Transformers."""
     input_text = f"passage: {text}"  # E5 requires prefix
-    batch = tokenizer(
+    batch = asr_tokenizer(
         input_text,
         max_length=512,
         padding=True,
@@ -28,9 +29,9 @@ def get_asr_embedding(text: str):
 
 # Initialize E5 tokenizer and model (official usage)
 print("Loading ASR model...")
-tokenizer = AutoTokenizer.from_pretrained('intfloat/multilingual-e5-base')
-asr_model = AutoModel.from_pretrained('intfloat/multilingual-e5-base')
+asr_tokenizer = AutoTokenizer.from_pretrained(ASR_EMBED_MODEL)
+asr_model = AutoModel.from_pretrained(ASR_EMBED_MODEL)
 
 asr_model.to(device)
 asr_model.eval()
-print("ASR MODEL: ", asr_model.device)
+print("ASR MODEL: ", asr_model.device, '\n')

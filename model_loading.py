@@ -56,17 +56,15 @@ def load_index():
     model.eval()
 
     # Test model
-    print(f"\nModel loaded successfully")
-    print(f"Model device: {next(model.parameters()).device}")
+    print(f"\nCLIP model loaded successfully")
+    print(f"CLIP model device: {next(model.parameters()).device}")
 
     tokenizer = open_clip.get_tokenizer(CONFIG['model_name'])
     ################
 
     index_path = os.path.join(faiss_save_dir, index_save_path)
     metadata_path = os.path.join(faiss_save_dir, metadata_save_path)
-    print(f"\nLoading index from: {index_path}")
-    print(f"Loading metadata from: {metadata_path}")
-
+   
     # Load index
     index = faiss.read_index(index_path)
     print(f"\nFAISS index loaded from {index_path}")

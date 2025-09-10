@@ -15,7 +15,7 @@ from dependecies import OCRClientDeps, ASRClientDeps
 from utils import convert_ImageList
 from group_utils import get_group_frames
 from load_embed_model import get_asr_embedding
-
+from asr_tools import get_estimate_keyframes
 
 router = APIRouter(prefix="/es-search", tags=["elastic search"])
 
@@ -49,34 +49,14 @@ def make_videoname_search_body(query_text, top_k):
 
     return search_body
 
-def make_ocr_search_body(query_text, top_k=50, fuzziness="AUTO"):
-    """
-    Build an Elasticsearch search body for OCR text search
-    with fuzzy matching + BM25 scoring.
-    """
-    search_body = {
+def make_ocr_search_body(query_text, top_k = 50, fuzziness="AUTO"):
+    search_body =  {
         "query": {
-            "bool": {
-                "should": [
-                    {
-                        "match": {
-                            "text": {
-                                "query": query_text,
-                                "operator": "and",      # all words must appear
-                                "boost": 2.0            # prioritize exact-ish matches
-                            }
-                        }
-                    },
-                    {
-                        "match": {
-                            "text": {
-                                "query": query_text,
-                                "fuzziness": fuzziness, # allow OCR typos
-                                "operator": "and"
-                            }
-                        }
-                    }
-                ]
+            "match": {
+                "text": {
+                    "query": query_text,
+                    "fuzziness": fuzziness
+                }
             }
         },
         "size": top_k,
@@ -113,6 +93,22 @@ def make_asr_search_body(query_text, top_k=50, fuzziness="AUTO"):
                         }
                     }
                 ]
+            }
+        }
+    }
+    return search_body
+
+
+def make_asr_search_body_2(query_text, top_k=50, fuzziness="AUTO"):
+    search_body = {
+        "size": top_k,
+        "_source": ["video_name", "text"],
+        "query": {
+            "match": {
+                "text": {
+                    "query": query_text,
+                    "fuzziness": fuzziness
+                }
             }
         }
     }
@@ -174,14 +170,21 @@ async def search_asr(request: SearchRequest, es_client: ASRClientDeps):
         query_text = request.value.strip()
         top_k = request.top_k
         
-        search_body = make_asr_search_body(query_text, top_k)
+        search_body = make_asr_search_body_2(query_text, top_k)
 
         raw_results = es_client.search_parsed(search_body)
 
         for res in raw_results:
-            res['frame_idx'] = -1
-            res['image_path'] = "/"
-            res['pts_time'] = -1
+            
+            video_name = res['video_name']
+            og_text = res['text']
+            
+            target_keyframe = get_estimate_keyframes(og_text,video_name, query_text)
+            
+            # adjust to keyframe info, keep score,video_name the same
+            res['frame_idx'] = target_keyframe['frame_idx']
+            res['image_path'] = target_keyframe['image_path']
+            res['pts_time'] = target_keyframe['pts_time']
             
         results = convert_ImageList(raw_results)
 
