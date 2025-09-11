@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 from fastapi import Depends, HTTPException
 from retrieve_vitL import index, metadata
+
 import os
 from ElasticSearch.ESclient import OCRClient, ASRClient
 from google import genai

@@ -43,7 +43,6 @@ def check_query_id_exists(query_id_key: str) -> bool:
             return False
     return False
 
-
 def add_new_csv_mapping(new_mapping: dict):
     existing_mapping = {}
     if os.path.exists(CSV_MAPPING):
@@ -65,28 +64,28 @@ def _sanitize_filename(name: str) -> str:
     # replace spaces with dashes
     base = base.replace(' ', '-')
     # allow alnum, dash, underscore, dot
-    safe = ''.join(ch for ch in base if ch.isalnum() or ch in ['-', '_', '.'])
+    safe = ''.join(ch for ch in base if ch.isalnum() or ch in ['-', '_', '.']) # only allows alphanumeric and these special characters
     return safe or 'submission'
 
 
 @router.post("/kis", response_model=MakeCSV_Response)
 async def make_csv(request: KIS_rq_CSV):
     try:
-        query_id = request.query_id.strip()
-        query_str = request.query_str
-        selected_frames = request.selected_frames
+        query_id = request.query_id.strip()       # str
+        query_str = request.query_str             # str
+        selected_frames = request.selected_frames # List[str]
 
         id_key = query_id
-        csv_filename = f"{_sanitize_filename(query_id)}.csv"
+        csv_filename = f"{_sanitize_filename(query_id)}.csv" # query-p1-kis.csv
         csv_filepath = os.path.join(CSV_DIR, csv_filename)
 
-        if check_query_id_exists(id_key):
+        if check_query_id_exists(id_key): 
             raise HTTPException(
                 status_code=409,
                 detail=f"CSV for query_id {query_id} already exists. Cannot overwrite existing submissions."
             )
 
-        if os.path.exists(csv_filepath):
+        if os.path.exists(csv_filepath): # Check if that CSV file exists.
             raise HTTPException(
                 status_code=409,
                 detail=f"CSV file {csv_filename} already exists. Cannot overwrite existing submissions."
@@ -94,7 +93,7 @@ async def make_csv(request: KIS_rq_CSV):
 
         csv_data = []
         for frameData in selected_frames:
-            video_name, frame_index = parse_frame_file(frameData)
+            video_name, frame_index = parse_frame_file(frameData) # L20_V001, 000128
             frame_index = int(frame_index)
             csv_data.append([video_name, frame_index])
 

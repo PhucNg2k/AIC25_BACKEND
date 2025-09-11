@@ -72,17 +72,25 @@ def clip_faiss_search(query: Union[str, Image.Image], index, metadata, top_k: in
         embedding = get_image_embedding(query) # -> image query
 
     # Search in FAISS index by performing a similarity search
+    """
+    distances: NumPy array of shape (nq, k) (nq: number of queries, k: number of nearest neighbors to retrieve (top-k))
+    indices: NumPy array of shape (nq, k)
+    indices[i, j] is the database ID of the j-th neighbor of query i.
+    distances[i, j] is that neighbor’s score under the index’s metric.
+    """
     distances, indices = index.search(embedding, top_k)
 
     results = []
     for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
         if str(idx) in metadata.keys():
-            frame_path = metadata[str(idx)]
+            frame_path = metadata[str(idx)] # "Videos_L21_a/L21_V001/f000000.webp"
             
             # check file metadata in FaissIndex folder
+            # video_name: L21_V001, frame_f: f000000.webp
             _, video_name, frame_f = frame_path.split("/")
 
             frame_f = os.path.splitext(frame_f)[0]
+
             frame_idx = int(frame_f[1:])
             
             image_path = os.path.join(DATA_SOURCE, frame_path) ####
@@ -91,7 +99,7 @@ def clip_faiss_search(query: Union[str, Image.Image], index, metadata, top_k: in
             # For normalized vectors, inner product ranges from -1 to 1
             # Convert to 0-100% where 1 = 100% similarity, -1 = 0% similarity
             #similarity_score = max(0, min(100, (float(distance) + 1) * 50))
-            similarity_score = distance
+
             
             metakey = get_metakey(video_name, frame_idx)
             pts_time = get_pts_time(metakey)

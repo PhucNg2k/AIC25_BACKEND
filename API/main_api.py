@@ -64,7 +64,7 @@ async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Re
         # Access raw form for files while using parsed model for fields
         form = await request.form()
         stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
-
+        # [(0, stage0), (1,stage1), (2,stage2), ...]
         for stage_key, modalities in stage_items:
             print("\nProcessing stage: ", stage_key)
             stage_result = await process_one_stage(modalities, form, entry.top_k)
