@@ -8,6 +8,8 @@ from API.frame_utils import get_video_fps, get_metakey
 from API.group_utils import get_group_frames
 from nltk.util import ngrams
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 def _normalize_text(text: str) -> str:
     if text is None:
@@ -149,6 +151,82 @@ def matching_ngram(data: List[Dict], text_content: str, query_text: Optional[str
 
     return None if best is None else best[1]
 
+
+def predict_from_timeline(time_line_snippet, text_query):
+    pass
+
+
+def jaccard_similarity(set1, set2):
+    # intersection of two sets
+    intersection = len(set1.intersection(set2))
+    # Unions of two sets
+    union = len(set1.union(set2))
+    
+    return intersection / union if union > 0 else 0.0
+
+tfidf_vectorizer = TfidfVectorizer(
+    lowercase=True,
+    strip_accents='unicode',
+    token_pattern=r'\b\w+\b',  # word boundaries
+    max_features=1000,
+    stop_words=None  # keep all words for Vietnamese
+)
+
+def estimate_keyframes_tf_idf(lookup_data, retrieved_chunk_txt, query_text):
+    """Use TF-IDF cosine similarity + query keyword matching to find best snippet."""
+    if not lookup_data or not retrieved_chunk_txt:
+        return None
+    
+    corpus = [snippet.get('text', '') for snippet in lookup_data]
+    
+    # Fit TF-IDF on corpus
+    tfidf_matrix = tfidf_vectorizer.fit_transform(corpus)
+    
+    # Transform chunk to same space
+    chunk_vector = tfidf_vectorizer.transform([retrieved_chunk_txt])
+    
+    # Compute TF-IDF similarities
+    tfidf_similarities = cosine_similarity(chunk_vector, tfidf_matrix).flatten()
+    
+    # Query keyword matching scores
+    query_scores = []
+    if query_text:
+        query_norm = _normalize_text(query_text)
+        query_tokens = set(query_norm.split(" ")) if query_norm else set()
+        
+        for snippet in lookup_data:
+            snippet_text = snippet.get('text', '')
+            snippet_norm = _normalize_text(snippet_text)
+            snippet_tokens = set(snippet_norm.split(" ")) if snippet_norm else set()
+            
+            # Jaccard similarity with query
+            if query_tokens and snippet_tokens:
+                query_score = jaccard_similarity(query_tokens, snippet_tokens)
+            else:
+                query_score = 0.0
+            query_scores.append(query_score)
+    else:
+        query_scores = [0.0] * len(lookup_data)
+    
+    # Combined scoring: TF-IDF similarity + query alignment
+    # Weight: 70% TF-IDF, 30% query matching
+    combined_scores = []
+    for i, snippet in enumerate(lookup_data):
+        tfidf_score = tfidf_similarities[i]
+        query_score = query_scores[i]
+        combined = 0.7 * tfidf_score + 0.3 * query_score
+        combined_scores.append(combined)
+    
+    # Find best match
+    best_idx = max(range(len(combined_scores)), key=lambda i: combined_scores[i])
+    best_snippet = lookup_data[best_idx]
+    
+    # Return midpoint time
+    start_time = best_snippet.get('start', 0)
+    duration = best_snippet.get('duration', 0)
+    return float(start_time)
+
+
 def get_estimate_keyframes(orginal_text: str, video_name: str, query_text: Optional[str] = None) -> Dict:
     if video_name[0] == "L":
         batch_name = 'b1'
@@ -188,7 +266,8 @@ def get_estimate_keyframes(orginal_text: str, video_name: str, query_text: Optio
     if not vid_fps:
         return group_keyframes[0]
 
-    anchor_time = matching_ngram(data, orginal_text, query_text) # !!
+    #anchor_time = matching_ngram(data, orginal_text, query_text) # !!
+    anchor_time = estimate_keyframes_tf_idf(data, orginal_text, query_text)
     if anchor_time is None:
         return group_keyframes[0]
     
