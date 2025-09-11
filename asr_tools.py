@@ -274,8 +274,4 @@ def get_estimate_keyframes(orginal_text: str, video_name: str, query_text: Optio
     target_frame_id = round(anchor_time * vid_fps)
     closest_keyframe = find_closest_keyframe(group_keyframes, target_frame_id)
     
-    print('\n', orginal_text)
-    print("ANCHOR TIME: ", anchor_time)
-    print("TARGET FRAME ID: ", target_frame_id)
-
     return closest_keyframe or group_keyframes[0]
