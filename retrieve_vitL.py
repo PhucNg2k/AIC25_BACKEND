@@ -98,8 +98,8 @@ def clip_faiss_search(query: Union[str, Image.Image], index, metadata, top_k: in
             # Convert inner product to similarity score (0-100%)
             # For normalized vectors, inner product ranges from -1 to 1
             # Convert to 0-100% where 1 = 100% similarity, -1 = 0% similarity
-            #similarity_score = max(0, min(100, (float(distance) + 1) * 50))
-
+            # similarity_score = max(0, min(100, (float(distance) + 1) * 50))
+            similarity_score = distance
             
             metakey = get_metakey(video_name, frame_idx)
             pts_time = get_pts_time(metakey)
