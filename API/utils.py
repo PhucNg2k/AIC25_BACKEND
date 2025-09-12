@@ -98,7 +98,7 @@ def get_intersection_results(list_results: List[List[ImageResult]]) -> List[Imag
         return (item['video_name'], item['frame_idx'])
 
     # Compute intersection of keys across all lists
-    key_sets = [{make_key(item) for item in lst} for lst in list_results]
+    key_sets = [{make_key(item) for item in lst} for lst in list_results] # list of sets
     intersect_keys = set.intersection(*key_sets)
     if not intersect_keys:
         return []

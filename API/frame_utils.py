@@ -1,9 +1,16 @@
-import json
-
+import json, sys
+import os
 video_metadata = {}
 
+API_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(API_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+
 FRAME_METADATA_FILE = "../Metadata/video_metadata_new.json"
-with open(FRAME_METADATA_FILE, 'r') as f:
+
+with open(os.path.abspath((FRAME_METADATA_FILE)), 'r') as f:
     video_metadata = json.load(f)
 
 def get_metakey(video_name: str, frameIdx: int):

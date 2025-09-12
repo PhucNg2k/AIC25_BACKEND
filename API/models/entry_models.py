@@ -35,6 +35,10 @@ class SearchEntryRequest(BaseModel):
     @field_validator('stage_list', mode='before')
     @classmethod
     def parse_stage_list_from_string(cls, v):
+        """
+        cls: Represents the class (SearchEntryRequest).
+        v: Represents the raw value passed for the stage_list field 
+        """
         # Accept already-parsed dict or JSON string from multipart/form-data
         if isinstance(v, dict):
             return v

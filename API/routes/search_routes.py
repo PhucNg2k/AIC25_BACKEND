@@ -33,14 +33,22 @@ async def text_search(request: SearchRequest, search_provider: search_resource_D
 
     try:
         en_query = request.value.strip().lower()
+        """ 
+        list of dict: result = {
+            'video_name': video_name,
+            'frame_idx': frame_idx,
+            'image_path': image_path,
+            'score': similarity_score,
+            'pts_time': pts_time
+        }
+        """
         raw_results = clip_faiss_search(en_query, index, metadata, top_k=request.top_k)
-        
-        results = convert_ImageList(raw_results)
+        results = convert_ImageList(raw_results) # convert to ImageResult model type
 
         return SearchResponse(
             success=True,
             query=request.value.strip(),
-            results=results,
+            results=results, # List ImageResult
             total_results=len(results),
             message=f"Found {len(results)} results for query: '{request.value.strip()}'"
         )
@@ -66,10 +74,12 @@ async def process_image(
         raise HTTPException(status_code=400, detail="File must be an image")
     
     try:
-        image_content = await image_file.read()
-        image_PIL = Image.open(io.BytesIO(image_content))
+        image_content = await image_file.read() # bytes content
+        image_PIL = Image.open(io.BytesIO(image_content)) # convert to array
         
         # Convert palette images with transparency to RGBA to avoid warnings
+        # P mode: Palette-based image
+        # PA mode: Palette with alpha channel
         if image_PIL.mode in ('P', 'PA') and 'transparency' in image_PIL.info:
             image_PIL = image_PIL.convert('RGBA')
         elif image_PIL.mode == 'P':
