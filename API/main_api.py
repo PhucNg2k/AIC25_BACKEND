@@ -40,7 +40,7 @@ app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
 app.include_router(search_router)
 app.include_router(submit_csv_router)
 app.include_router(es_router)
-# app.include_router(llm_router)
+app.include_router(llm_router)
 
 # CORS: if you need cookies/Authorization headers, replace ["*"] with your exact origins
 app.add_middleware(
