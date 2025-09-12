@@ -23,7 +23,7 @@ from models.entry_models import SearchEntryRequest, StageModalities
 from routes.submit_csv_routes import router as submit_csv_router
 from routes.search_routes import router as search_router
 from routes.es_routes import router as es_router
-from routes.llm_routes import router as llm_router
+# from routes.llm_routes import router as llm_router
 
 
 from retrieve_vitL import index as search_index, metadata as search_metadata
@@ -40,7 +40,7 @@ app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
 app.include_router(search_router)
 app.include_router(submit_csv_router)
 app.include_router(es_router)
-app.include_router(llm_router)
+# app.include_router(llm_router)
 
 # CORS: if you need cookies/Authorization headers, replace ["*"] with your exact origins
 app.add_middleware(
@@ -50,7 +50,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.get("/")
 async def root():
@@ -63,17 +62,20 @@ async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Re
 
         # Access raw form for files while using parsed model for fields
         form = await request.form()
+        print("HERE before stage_items")
         stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
         # [(0, stage0), (1,stage1), (2,stage2), ...]
+        print("AFTER stage_items")
         for stage_key, modalities in stage_items:
             print("\nProcessing stage: ", stage_key)
             stage_result = await process_one_stage(modalities, form, entry.top_k)
+            print("FINISH Process one stage")
             if stage_result is not None:
                 stage_result = normalize_score(stage_result)
                 collected_results.append(stage_result)
                 
         flat_results = None
-
+        print("HERE before event chaining")
         # apply event-chaining for multi-stage
         if len(stage_items) > 1:
             #flat_results = []

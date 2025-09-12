@@ -104,26 +104,32 @@ def discard_duplicate_frame(frame_list: List[ImageResult]) -> List[ImageResult]:
 
 async def process_one_stage(modalities: StageModalities, form, top_k: int):
     """Process a single stage with all its modalities"""
+    
     if not isinstance(modalities, StageModalities):
         return None
-
+    
     # Create search tasks for all modalities
     tasks = create_search_tasks(modalities, form, top_k)
     
     # Process results and apply weights for each stage
+    # print(f"tasks = {tasks}")
+    print(f"modalities = {modalities}")
     results, record_order = await process_search_results(tasks, modalities)
-
+    print(type(results))
+    print(results)
+    
     # reorder list of results
     results = reorder_modal_results(results, record_order)
-
+    
+    
     if len(results) > 1:
         temporal_chain_results = temporal_chain(results, 2) 
         res_temporal_chain = update_temporal_score(temporal_chain_results)
     else: 
         res_temporal_chain = results[0]
-
+    
+    
     return res_temporal_chain
-
 
 def temporal_chain(stages: List[List[ImageResult]], window_s: float = 2) -> List[ImageResult]:
     print("PERFORMING TEMPORAL CHAIN")

@@ -114,6 +114,7 @@ class ESClientBase(ABC):
         raise NotImplementedError
 
     # -------- Bulk Operations --------
+    # --- in ESClientBase.bulk_index (replace the method) ---
     def bulk_index(self, documents: List[Dict[str, Any]], batch_size: int = 1000) -> bool:
         """Bulk index documents using helpers.bulk"""
         try:
@@ -123,21 +124,24 @@ class ESClientBase(ABC):
 
             actions = []
             for doc in documents:
+                # Allow caller to pass a stable _id; keep the rest in _source
+                _id = doc.pop("_id", None)
                 action = {
                     "_index": self.index_name,
                     "_source": doc
                 }
+                if _id is not None:
+                    action["_id"] = _id
+
                 actions.append(action)
 
-                # Bulk insert when batch size is reached
                 if len(actions) >= batch_size:
-                    helpers.bulk(self.es, actions)
+                    helpers.bulk(self.es, actions, request_timeout=self.request_timeout)
                     print(f"✅ Indexed {len(actions)} documents")
                     actions = []
 
-            # Index remaining documents
             if actions:
-                helpers.bulk(self.es, actions)
+                helpers.bulk(self.es, actions, request_timeout=self.request_timeout)
                 print(f"✅ Indexed final {len(actions)} documents")
 
             print(f"🎉 Successfully indexed all documents to '{self.index_name}'")
@@ -146,6 +150,7 @@ class ESClientBase(ABC):
         except Exception as e:
             print(f"❌ Error during bulk indexing: {e}")
             return False
+
 
     def bulk_index_from_dataframe(self, df, batch_size: int = 1000) -> bool:
         """Bulk index from pandas DataFrame using the child's document converter"""
@@ -194,35 +199,91 @@ class ESClientBase(ABC):
         return False
 
 class OCRClient(ESClientBase):
-    def __init__(self, hosts, api_key, index_name: str = "ocr_index"):
+    def __init__(self, hosts, api_key, index_name: str = "ocr_index_v2"):
         super().__init__(hosts, api_key, index_name)
 
     def get_mapping(self) -> Dict[str, Any]:
-        """Return OCR index mapping"""
+        """Return OCR index mapping (no ICU plugin required)"""
         return {
-            "mappings": {
-                "properties": {
-                    "video_folder": {"type": "keyword"},
-                    "video_name": {"type": "keyword"},
-                    "frame_id": {"type": "keyword"},
-                    "text": {
-                        "type": "text",
-                        "analyzer": "whitespace",       #keeps words as-is, no stemming
-                        "search_analyzer": "standard",  #still normalize queries
-                        "fields": {
-                            "keyword": {
-                                "type": "keyword",
-                                "ignore_above": 256
-                            }
+            "settings": {
+                "number_of_shards": 1,
+                "number_of_replicas": 0,
+                "analysis": {
+                    "char_filter": {
+                        "junk_strip": {
+                            "type": "pattern_replace",
+                            "pattern": r"[^\p{L}\p{Nd}\s]",  # drop OCR junk
+                            "replacement": " "
+                        }
+                    },
+                    "filter": {
+                        # keep max_gram - min_gram <= 1 to avoid index.max_ngram_diff errors
+                        "ng34": { "type": "ngram", "min_gram": 3, "max_gram": 4 }
+                    },
+                    "analyzer": {
+                        "vi_clean": {       # keep diacritics; just clean junk + lowercase
+                            "type": "custom",
+                            "char_filter": ["html_strip", "junk_strip"],
+                            "tokenizer": "standard",
+                            "filter": ["lowercase"]
+                        },
+                        "vi_folded": {      # accent-insensitive
+                            "type": "custom",
+                            "char_filter": ["html_strip", "junk_strip"],
+                            "tokenizer": "standard",
+                            "filter": ["lowercase", "asciifolding"]
+                        },
+                        "char_ngrams": {    # robust char n-grams
+                            "type": "custom",
+                            "tokenizer": "keyword",
+                            "filter": ["lowercase", "asciifolding", "ng34"]
                         }
                     }
                 }
             },
-            "settings": {
-                "number_of_shards": 1,
-                "number_of_replicas": 0
+            "mappings": {
+                "properties": {
+                    "batch":        {"type": "keyword"},
+                    "inter_folder": {"type": "keyword"},
+                    "leaf_folder":  {"type": "keyword"},
+                    "file_name":    {"type": "keyword"},
+
+                    "video_id":     {"type": "keyword"},
+                    "video_name":   {"type": "keyword"},
+                    "frame_id":     {"type": "keyword"},
+                    "frame_idx":    {"type": "integer"},
+
+                    "text_raw":     {"type": "text"},
+                    "text": {
+                        "type": "text",
+                        "analyzer": "vi_clean",
+                        "search_analyzer": "vi_clean",
+                        "fields": {
+                            "folded":  { "type": "text", "analyzer": "vi_folded" },
+                            "ngrams":  { "type": "text", "analyzer": "char_ngrams" },
+                            "keyword": { "type": "keyword", "ignore_above": 256 }
+                        }
+                    },
+                    "text_folded":  {"type": "keyword"},
+
+                    "language":     {"type": "keyword"},
+                    "source":       {"type": "keyword"},
+                    "det_score":    {"type": "float"},
+                    "rec_conf":     {"type": "float"},
+
+                    "bbox": {
+                        "properties": {
+                            "x1": {"type": "float"},
+                            "y1": {"type": "float"},
+                            "x2": {"type": "float"},
+                            "y2": {"type": "float"}
+                        }
+                    },
+                    "poly":         {"type": "float"}   # array OK
+                }
             }
         }
+
 
     def convert_row_to_document(self, row) -> Optional[Dict[str, Any]]:
         """Convert DataFrame row to OCR document"""
@@ -398,4 +459,4 @@ results, total = ocr_client.search_parsed(search_body, top_k=100)
 # Get stats
 stats = ocr_client.get_index_stats()
 print(f"Index has {stats['document_count']} documents")
-""" 
+"""

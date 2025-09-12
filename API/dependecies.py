@@ -3,12 +3,15 @@ from fastapi import Depends, HTTPException
 from retrieve_vitL import index, metadata
 
 import os
-from ElasticSearch.ESclient import OCRClient, ASRClient
-from google import genai
+from ElasticSearch.ESclient import (
+    OCRClient,
+    # ASRClient
+)
+# from google import genai
 
 
 LLM_MODEL = "gemini-2.5-flash"
-OCR_INDEX_NAME = 'ocr_index_chunked'
+OCR_INDEX_NAME = 'ocr_index'
 ASR_INDEX_NAME = 'asr_index_chunked'
 
 async def get_search_resources():
@@ -79,9 +82,9 @@ async def get_asr_client(es_connection: Annotated[dict, Depends(get_es_client)])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ASR client error: {str(e)}")
 
-async def get_llm_client():
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    yield client
+# async def get_llm_client():
+#     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+#     yield client
 
 
 
@@ -89,5 +92,5 @@ async def get_llm_client():
 search_resource_Deps = Annotated[dict, Depends(get_search_resources)]
 
 OCRClientDeps = Annotated[OCRClient, Depends(get_ocr_client)]
-ASRClientDeps = Annotated[ASRClient, Depends(get_asr_client)]
-GeminiClientDeps = Annotated[genai.Client, Depends(get_llm_client)]
+# ASRClientDeps = Annotated[ASRClient, Depends(get_asr_client)]
+# GeminiClientDeps = Annotated[genai.Client, Depends(get_llm_client)]

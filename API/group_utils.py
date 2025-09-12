@@ -17,9 +17,10 @@ def get_group_frames(video_name: str):
     
     found = False
     for pfolder, videos in group_metadata.items():
+        # pfolder: video_name folder, videos: each leaf folder
         for key_name, frames in videos.items():
-            if video_name == key_name:
-                frame_ls = frames
+            if video_name == key_name: # L21_V001
+                frame_ls = frames # list of keyframe (.webp)
                 found = True
                 break
         if found:
