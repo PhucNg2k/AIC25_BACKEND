@@ -45,7 +45,7 @@ def find_closest_keyframe(group_keyframes: List[Dict], target_frame_id: int) -> 
             best_dist = dist
             closest = frame
             
-    print('CLOSEST FRAME: ', closest)
+    #print('CLOSEST FRAME: ', closest)
     return closest or group_keyframes[0]
 
 def matching_ngram(data: List[Dict], text_content: str, query_text: Optional[str] = None) -> Optional[float]:

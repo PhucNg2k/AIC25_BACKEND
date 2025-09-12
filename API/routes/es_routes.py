@@ -114,6 +114,38 @@ def make_asr_search_body_2(query_text, top_k=50, fuzziness="AUTO"):
     }
     return search_body
 
+def make_asr_search_body_3(query_text, top_k=50, fuzziness="AUTO"):
+    query_vector = get_asr_embedding(query_text)
+    num_candidates = max(top_k * 4, 200)
+
+    search_body = {
+        "size": top_k,
+        "_source": ["video_name", "text"],
+        "query": {
+            "bool": {
+                "should": [
+                    {
+                        "match": {
+                            "text": {
+                                "query": query_text,
+                                "fuzziness": fuzziness,
+                                "boost": 2.0
+                            }
+                        }
+                    },
+                    {"match_all": {}}
+                ]
+            }
+        },
+        "knn": {
+            "field": "embedding",
+            "query_vector": query_vector,
+            "k": top_k,
+            "num_candidates": num_candidates
+        }
+    }
+    return search_body
+
 @router.post("/video_name", response_model=SearchResponse)
 async def search_video_name(request: SearchRequest):
     try:
@@ -173,7 +205,7 @@ async def search_asr(request: SearchRequest, es_client: ASRClientDeps):
         search_body = make_asr_search_body_2(query_text, top_k)
 
         raw_results = es_client.search_parsed(search_body)
-
+        
         for res in raw_results:
             
             video_name = res['video_name']
