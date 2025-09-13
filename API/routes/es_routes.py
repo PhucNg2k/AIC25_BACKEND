@@ -23,13 +23,9 @@ from utils import convert_ImageList
 from group_utils import get_group_frames
 from asr_tools import get_estimate_keyframes
 
-#from load_embed_model import get_asr_embedding
-
 router = APIRouter(prefix="/es-search", tags=["elastic search"])
 
-
 def make_asr_search_body(query_text, top_k=50, fuzziness="AUTO"):
-    #query_vector = get_asr_embedding(query_text)
     
     search_body = {
         "size": top_k,

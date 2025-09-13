@@ -4,12 +4,17 @@
 # This will move files from Data/Videos_*/video/*.mp4 to Data/video/*.mp4
 
 # Set the base directory
+<<<<<<< HEAD
 BASE_DIR="../REAL_DATA/Data"
 VIDEOS_DIR="$BASE_DIR/video"
+=======
+BASE_DIR="../REAL_DATA/Data/video"
+VIDEOS_DIR="/media/phucuy2025/KingstonUSB/b2_videos"
+>>>>>>> 958a4cc (testing)
 
 # Create the central video directory if it doesn't exist
 echo "Creating central video directory: $VIDEOS_DIR"
-mkdir -p "$VIDEOS_DIR"
+mkdir -p "$BASE_DIR"
 
 # Counter for moved files
 moved_count=0
