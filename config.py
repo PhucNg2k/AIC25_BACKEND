@@ -20,7 +20,4 @@ CLIP_EMBED_DIM_H = 1024
 LLM_MODEL = "gemini-2.5-flash"
 OCR_INDEX_NAME='ocr_index_v2'
 ASR_INDEX_NAME = 'asr_index_chunked'
-
-OCR_INDEX_NAME='ocr_index_v2'
-
 CLIP_EMBED_DIM_L = 768

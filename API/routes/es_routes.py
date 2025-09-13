@@ -6,6 +6,7 @@ import sys
 import os
 # NEW: bring in the aggregation search + frame utils
 from search_frames_ocr import build_frame_agg_query
+from search_frames_asr import build_asr_chunk_agg_query
 from frame_utils import get_metakey, get_pts_time, get_frame_path
 import os
 
@@ -95,34 +96,44 @@ async def search_asr(request: SearchRequest, es_client: ASRClientDeps):
     try:
         print("ES ASR index: ", es_client.index_name)
         query_text = request.value.strip()
-        top_k = request.top_k
+        top_k = request.top_k or 50
+        
+        print(f"ASR Query: '{query_text}' (length: {len(query_text)})")
 
-        search_body = make_asr_search_body(query_text, top_k)
+        # Use aggregation-based ASR chunk search
+        asr_search_body, _ = build_asr_chunk_agg_query(query_text, page_size=min(1000, max(10, top_k)))
 
-        raw_results = es_client.search_parsed(search_body)
+        raw_results = es_client.search_parsed(asr_search_body, top_k)
+        print(f"Raw results count: {len(raw_results)}")
 
+        # Convert chunk results to frame-based results for UI compatibility
         for res in raw_results:
+            try:
+                video_name = res['video_name']
+                text_content = res['text']
 
-            video_name = res['video_name']
-            og_text = res['text']
-
-            target_keyframe = get_estimate_keyframes(og_text,video_name, query_text)
-
-            # adjust to keyframe info, keep score,video_name the same
-            res['frame_idx'] = target_keyframe['frame_idx']
-            res['image_path'] = target_keyframe['image_path']
-            res['pts_time'] = target_keyframe['pts_time']
-
+                # Estimate keyframe from chunk timing
+                target_keyframe = get_estimate_keyframes(text_content, video_name, query_text)
+        
+                # adjust to keyframe info, keep score,video_name the same
+                res['frame_idx'] = target_keyframe['frame_idx']
+                res['image_path'] = target_keyframe['image_path']
+                res['pts_time'] = target_keyframe['pts_time']
+                
+            except Exception as e:
+                print(f"Error processing result for video {res.get('video_name', 'unknown')}: {str(e)}")
+                # Skip this result and continue with others
+                continue
+            
         results = convert_ImageList(raw_results)
-
+        
         return SearchResponse(
-            success=True,
+            success=len(results) > 0,
             query=request.value.strip(),
             results=results,
             total_results=len(results),
-            message=f"Found {len(results)} results for query: '{request.value.strip()}'"
+            message=f"Found {len(results)} ASR chunks for query: '{request.value.strip()}'"
         )
     except Exception as e:
-        # Log the actual error for debugging
         print(f"Error in search_asr: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"ASR search error: {str(e)}")

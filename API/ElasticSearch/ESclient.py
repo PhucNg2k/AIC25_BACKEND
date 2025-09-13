@@ -185,21 +185,7 @@ class ESClientBase(ABC):
         body: Dict[str, Any],
         top_k: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        """
-        body: defined in es_routes.py. Take body of OCR for example:
-            search_body =  {
-                "query": {
-                    "match": {
-                        "text": {
-                            "query": query_text,
-                            "fuzziness": fuzziness
-                        }
-                    }
-                },
-                "size": top_k,
-                "_source": ["video_folder", "video_name", "frame_id", "text"]
-            }
-        """ 
+
         # return dict containing raw elastic search {'hits', 'scores', 'source document'}
         resp = self.search(body=body, top_k=top_k) 
         results = self.parse_hits(resp)
@@ -403,33 +389,80 @@ class OCRClient(ESClientBase):
 
 
 class ASRClient(ESClientBase):
-    def __init__(self, hosts, api_key, index_name):
+    def __init__(self, hosts, api_key, index_name: str = "asr_index_chunked"):
         super().__init__(hosts, api_key, index_name)
     
     def get_mapping(self) -> Dict[str, Any]:
+        """Return ASR index mapping with text analysis support"""
         return {
-            "mappings": {
-                "properties": {
-                    "video_name":   {"type": "keyword"},
-                    "text":     {"type": "text"},
-                }
-            },
             "settings": {
                 "number_of_shards": 1,
-                "number_of_replicas": 0
+                "number_of_replicas": 0,
+                "analysis": {
+                    "char_filter": {
+                        "junk_strip": {
+                            "type": "pattern_replace",
+                            "pattern": r"[^\p{L}\p{Nd}\s]",  # drop junk characters
+                            "replacement": " "
+                        }
+                    },
+                    "filter": {
+                        # keep max_gram - min_gram <= 1 to avoid index.max_ngram_diff errors
+                        "ng34": { "type": "ngram", "min_gram": 3, "max_gram": 4 }
+                    },
+                    "analyzer": {
+                        "vi_clean": {       # keep diacritics; just clean junk + lowercase
+                            "type": "custom",
+                            "char_filter": ["html_strip", "junk_strip"],
+                            "tokenizer": "standard",
+                            "filter": ["lowercase"]
+                        },
+                        "vi_folded": {      # accent-insensitive
+                            "type": "custom",
+                            "char_filter": ["html_strip", "junk_strip"],
+                            "tokenizer": "standard",
+                            "filter": ["lowercase", "asciifolding"]
+                        },
+                        "char_ngrams": {    # robust char n-grams
+                            "type": "custom",
+                            "tokenizer": "keyword",
+                            "filter": ["lowercase", "asciifolding", "ng34"]
+                        }
+                    }
+                }
+            },
+            "mappings": {
+                "properties": {
+                    "video_name": {"type": "keyword"},
+                    "chunk_id": {"type": "keyword"},
+                    "text": {
+                        "type": "text",
+                        "analyzer": "vi_clean",
+                        "search_analyzer": "vi_clean",
+                        "fields": {
+                            "folded":  { "type": "text", "analyzer": "vi_folded" },
+                            "ngrams":  { "type": "text", "analyzer": "char_ngrams" },
+                            "keyword": { "type": "keyword", "ignore_above": 256 }
+                        }
+                    },
+                    "asr_conf": {"type": "float"}
+                }
             }
         }
     
     
     def convert_row_to_document(self, row) -> Optional[Dict[str, Any]]:
+        """Convert DataFrame row to ASR document"""
         try:
             doc = {
                 "video_name": str(row.get('video_name', '')),
-                "text": str(row.get('text', ''))
+                "chunk_id": str(row.get('chunk_id', '')),
+                "text": str(row.get('text', '')),
+                "asr_conf": float(row.get('asr_conf', 0.95))
             }
             
             # Validate required fields
-            if any(self._is_invalid(v) for v in [doc["video_name"]]):
+            if any(self._is_invalid(v) for v in [doc["video_name"], doc["chunk_id"]]):
                 return None
                 
             return doc
@@ -437,24 +470,68 @@ class ASRClient(ESClientBase):
             print(f"❌ Error converting row to document: {e}")
             return None
     
-    def parse_hits(self, response: Dict[str, Any]) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
-        for hit in response.get("hits", {}).get("hits", []):
-            src = hit.get("_source", {})
-            score = hit.get("_score", 0.0)
+    def search(self, body: Dict[str, Any], top_k: Optional[int] = None, from_: Optional[int] = None, search_after: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+        """Override search to handle ASR chunk aggregation queries"""
+        # Check if this is an aggregation query
+        if "aggs" in body and "by_chunk" in body["aggs"]:
+            # Handle aggregation query
+            results: List[Dict[str, Any]] = []
+            after_key = None
+            
+            if top_k is None:
+                top_k = 50
 
-            video_name = src.get("video_name")
-            text_conent = src.get("text")
-    
-            if video_name is None or text_conent is None:
-                continue
+            while True:
+                if after_key:
+                    body["aggs"]["by_chunk"]["composite"]["after"] = after_key
+                
+                resp = self.es.search(index=self.index_name, body=body)
+                
+                buckets = resp.get("aggregations", {}).get("by_chunk", {}).get("buckets", [])
+                for b in buckets:
+                    item = {
+                        "video_name": b["key"]["video_name"],
+                        "chunk_id": b["key"]["chunk_id"],
+                        "matched_terms": int(b["matched_terms"]["value"]),
+                        "sum_asr_conf": float(b["sum_asr_conf"]["value"]),
+                        "max_asr_conf": float(b["max_asr_conf"]["value"]),
+                        "avg_asr_conf": float(b["avg_asr_conf"]["value"]),
+                        "examples": [hit["_source"] for hit in b["examples"]["hits"]["hits"]],
+                    }
+                    results.append(item)
+                    if len(results) >= top_k:
+                        return results
+
+                after_key = resp.get("aggregations", {}).get("by_chunk", {}).get("after_key")
+                if not after_key:
+                    break
+            
+            return results
+        else:
+            # Handle regular query - call parent method
+            return super().search(body, top_k, from_, search_after)
+
+    def parse_hits(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Parse aggregation results into chunk-based results.
+        Note: This expects aggregation results, not ES hits.
+        """
+        out: List[Dict[str, Any]] = []
+        
+        for r in rows:
+            video_name = r["video_name"]
+            chunk_id = r["chunk_id"]
+            
+            # Get chunk metadata from examples
+            examples = r.get("examples", [])
+            text_content = examples[0].get("text", "") if examples else ""
+            asr_conf = examples[0].get("asr_conf", 0.0) if examples else 0.0
 
             out.append({
                 "video_name": video_name,
-                "text": text_conent,
-                "score": score,
-                "raw": src,
+                "text": text_content,
+                "score": r.get("sum_asr_conf", 0.0),
             })
-            
+        
         return out
     

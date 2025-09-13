@@ -26,10 +26,12 @@ for dir in target_dir:
 
         df_data = []
 
-        for chunk in chunks:
+        for chunk_idx, chunk in enumerate(chunks):
             data_row = {
                 "video_name": video_name,
-                "text": chunk.strip()
+                "chunk_id": f"{video_name}_chunk_{chunk_idx:04d}",  # String format for ES keyword field
+                "text": chunk.strip(),
+                "asr_conf": 0.95  # Add ASR confidence score
             }
             df_data.append(data_row)
         

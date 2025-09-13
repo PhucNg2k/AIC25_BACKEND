@@ -8,7 +8,7 @@ from ElasticSearch.ESclient import (
     ASRClient
 )
 
-# from google import genai
+from google import genai
 
 # Parent directory to import retrieve module, make script-friendly
 API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -92,14 +92,7 @@ async def get_llm_client():
     yield client
 
 
-
-
-
-
-# depends: Tells FastAPI: run that function before handling the request, and inject its return value as the parameter.
-
 search_resource_Deps = Annotated[dict, Depends(get_search_resources)]
-
 OCRClientDeps = Annotated[OCRClient, Depends(get_ocr_client)]
 ASRClientDeps = Annotated[ASRClient, Depends(get_asr_client)]
-# GeminiClientDeps = Annotated[genai.Client, Depends(get_llm_client)]
+GeminiClientDeps = Annotated[genai.Client, Depends(get_llm_client)]
