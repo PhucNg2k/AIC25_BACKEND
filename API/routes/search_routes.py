@@ -65,7 +65,7 @@ async def process_image(
 ):
     file_name = image_file.filename
     content_type = image_file.content_type
-
+    
     index = search_provider["index"]
     metadata = search_provider["metadata"]
     

@@ -127,6 +127,21 @@ async def search_ocr(request: SearchRequest, es_client: OCRClientDeps):
 
         raw_results = es_client.search_parsed(ocr_search_body, top_k)
         
+
+        # NEW: Use composite-aggregation frame search
+        # print(f"QUERY TEXT = {query_text}")
+        # print("BEFORE GETTING RESULTS")
+        # raw_results = _ocr_frames_by_agg(
+        #     query_text=query_text,
+        #     top_k=top_k,
+        #     # You can expose these as request options later if you like:
+        #     min_terms=None,          # None => require ALL tokens (default in search_frames_ocr)
+        #     min_rec_conf=0.0,
+        #     min_det_score=0.0,
+        #     language=None,
+        # )
+        # print("AFTER GETTING RESULTS")
+        # print(f"RAW RESULTS = {raw_results}")   
         results = convert_ImageList(raw_results)
 
         return SearchResponse(
