@@ -14,7 +14,7 @@ if ROOT_DIR not in sys.path:
 from API.ElasticSearch.ESclient import ASRClient
 
 
-ASR_DATA = "../../REAL_DATA/asr_chunked"
+ASR_DATA = "../../REAL_DATA/asr_data_combined/asr_embed"
 
 
 def load_data(asr_dir: str):

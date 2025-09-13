@@ -62,10 +62,10 @@ async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Re
 
         # Access raw form for files while using parsed model for fields
         form = await request.form()
-        print("HERE before stage_items")
+        
         stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
         # [(0, stage0), (1,stage1), (2,stage2), ...]
-        print("AFTER stage_items")
+        
         for stage_key, modalities in stage_items:
             print("\nProcessing stage: ", stage_key)
             stage_result = await process_one_stage(modalities, form, entry.top_k)
@@ -78,9 +78,6 @@ async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Re
         print("HERE before event chaining")
         # apply event-chaining for multi-stage
         if len(stage_items) > 1:
-            #flat_results = []
-            #for stage_results in collected_results:
-            #    flat_results.extend(stage_results)  # will need chaining algorithm,
             weight_list = [0.6] * len(stage_items) # keep top highest 60% quantity
             weighted_res_quant = get_weighted_union_results(collected_results, weight_list, fuse=False)
             event_seqs = events_chain(weighted_res_quant)
@@ -88,6 +85,7 @@ async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Re
             flat_results = update_temporal_score(event_seqs)
                 
         else: # single stage
+            print("SingleStage only")
             flat_results = collected_results[0] if collected_results else []
 
         flat_results = discard_duplicate_frame(flat_results)

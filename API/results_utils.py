@@ -115,18 +115,15 @@ async def process_one_stage(modalities: StageModalities, form, top_k: int):
     # print(f"tasks = {tasks}")
     print(f"modalities = {modalities}")
     results, record_order = await process_search_results(tasks, modalities)
-    print(type(results))
-    print(results)
-    
+
     # reorder list of results
     results = reorder_modal_results(results, record_order)
-    
-    
+
     if len(results) > 1:
         temporal_chain_results = temporal_chain(results, 2) 
         res_temporal_chain = update_temporal_score(temporal_chain_results)
     else: 
-        res_temporal_chain = results[0]
+        res_temporal_chain = results[0] if results else []
     
     
     return res_temporal_chain

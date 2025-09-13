@@ -2,7 +2,7 @@ from typing import Annotated, Any
 from fastapi import Depends, HTTPException
 from retrieve_vitL import index, metadata
 
-import os
+import os, sys
 from ElasticSearch.ESclient import (
     OCRClient,
     ASRClient
@@ -10,10 +10,13 @@ from ElasticSearch.ESclient import (
 
 from google import genai
 
+# Parent directory to import retrieve module, make script-friendly
+API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(API_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 
-LLM_MODEL = "gemini-2.5-flash"
-OCR_INDEX_NAME = 'ocr_index'
-ASR_INDEX_NAME = 'asr_index_chunked'
+from config import OCR_INDEX_NAME, ASR_INDEX_NAME
 
 async def get_search_resources():
     """Dependency to provide search resources"""

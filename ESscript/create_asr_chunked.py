@@ -88,7 +88,7 @@ def make_xl_file(df, save_dir, file_name):
 
 
 DATA_FOLDER = os.path.abspath("../../REAL_DATA")
-ocr_folders = ['ocr_b1', 'ocr_b2']
+ocr_folders = ['asr_b1', 'asr_b2']
 
 for ocr_folder in ocr_folders:
     folder_path = os.path.join(DATA_FOLDER, ocr_folder)

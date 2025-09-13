@@ -5,7 +5,7 @@ from fastapi import  HTTPException, APIRouter
 import sys
 import os
 # NEW: bring in the aggregation search + frame utils
-from search_frames_ocr import search_frames as agg_search_frames
+from search_frames_ocr import build_frame_agg_query
 from frame_utils import get_metakey, get_pts_time, get_frame_path
 import os
 
@@ -56,145 +56,7 @@ def make_videoname_search_body(query_text, top_k):
 
     return search_body
 
-def make_ocr_search_body(query_text, top_k=50, fuzziness="AUTO"):
-    """
-    Robust OCR search:
-      - text.folded with fuzziness (accent-insensitive + tolerant to small OCR errors)
-      - text.ngrams fallback for heavier noise
-      - text (raw) as a weaker signal
-      - confidence-aware ranking via rec_conf / det_score
-    """
-    # Normalize fuzziness: prefer 1 for small OCR mistakes like extra/missing letter
-    fz = 1 if str(fuzziness).upper() == "AUTO" else fuzziness
 
-    search_body = {
-        "size": top_k,
-        "track_total_hits": True,
-        "_source": ["video_folder", "video_name", "frame_id", "text", "rec_conf", "det_score"],
-        "query": {
-            "function_score": {
-                "query": {
-                    "bool": {
-                        "should": [
-                            # Primary: accent-insensitive, fuzzy lexical match
-                            {
-                                "match": {
-                                    "text.folded": {
-                                        "query": query_text,
-                                        "fuzziness": fz,
-                                        "prefix_length": 0,
-                                        "max_expansions": 50,
-                                        "boost": 5.0
-                                    }
-                                }
-                            },
-                            # Secondary: raw text (in case folded analyzer missed something)
-                            {
-                                "match": {
-                                    "text": {
-                                        "query": query_text,
-                                        "fuzziness": fz,
-                                        "prefix_length": 0,
-                                        "max_expansions": 50,
-                                        "boost": 2.0
-                                    }
-                                }
-                            },
-                            # Safety net: character n-grams for shredded tokens
-                            {
-                                "match": {
-                                    "text.ngrams": {
-                                        "query": query_text,
-                                        "boost": 1.0
-                                    }
-                                }
-                            }
-                        ],
-                        "minimum_should_match": 1
-                    }
-                },
-                # Confidence-aware scoring
-                "functions": [
-                    {
-                        "field_value_factor": {
-                            "field": "rec_conf",
-                            "modifier": "sqrt",
-                            "factor": 1.0,
-                            "missing": 0.3
-                        }
-                    },
-                    {
-                        "field_value_factor": {
-                            "field": "det_score",
-                            "modifier": "sqrt",
-                            "factor": 0.5,
-                            "missing": 0.3
-                        }
-                    }
-                ],
-                "score_mode": "sum",
-                "boost_mode": "sum"
-            }
-        }
-    }
-    return search_body
-
-def _ocr_frames_by_agg(
-    query_text: str,
-    top_k: int = 50,
-    min_terms: int = None,
-    min_rec_conf: float = 0.0,
-    min_det_score: float = 0.0,
-    language: str = None,
-) -> list[dict]:
-    """
-    Calls the composite-aggregation search and adapts each frame to the UI shape
-    your convert_ImageList() already understands.
-    """
-    # Keep your index selection consistent with your system env/config
-    index_name = os.getenv("OCR_INDEX_NAME", "ocr_index_v2")  # align with your mapping/index
-    print(f"INDEX_NAME = {index_name}")
-    rows = agg_search_frames(
-        query_text,
-        index_name=index_name,
-        min_terms=min_terms,          # default: require ALL tokens (search_frames_ocr behavior)
-        use_folded=True,              # accent-insensitive
-        top_n=top_k,
-        min_rec_conf=min_rec_conf,
-        min_det_score=min_det_score,
-        language=language,
-    )
-    print(f"LEN ROWS = {len(rows)}")
-    out: list[dict] = []
-    for r in rows:
-        video_name = r["video_name"]
-        # print(f"video name = {video_name}")
-        # search_frames_ocr returns "frame_id" as string; we convert to int idx for your UI
-        try:
-            frame_idx = int(float(r["frame_id"][1:]))
-        except Exception:
-            continue
-        # print(f"frame_idx = {frame_idx}")
-        metakey  = get_metakey(video_name, frame_idx)
-        image    = get_frame_path(metakey)
-        pts_time = get_pts_time(metakey)
-
-        # Choose a stable score for sorting; sum_rec_conf works well. You could
-        # also combine matched_terms and confidences if you want.
-        out.append({
-            "video_name": video_name,
-            "frame_idx": frame_idx,
-            "score": r.get("sum_rec_conf", 0.0),
-            "image_path": image,
-            "pts_time": pts_time,
-            # If you want to surface debug info in UI later:
-            # "matched_terms": r.get("matched_terms"),
-            # "max_rec_conf": r.get("max_rec_conf"),
-            # "examples": r.get("examples", []),
-        })
-        
-    print(f"LEN OUT = {len(out)}")
-    return out
 
 def make_asr_search_body(query_text, top_k=50, fuzziness="AUTO"):
     query_vector = get_asr_embedding(query_text)
@@ -256,19 +118,15 @@ async def search_video_name(request: SearchRequest):
 @router.post("/ocr", response_model=SearchResponse)
 async def search_ocr(request: SearchRequest, es_client: OCRClientDeps):
     try:
+        print("ES OCR index: ", es_client.index_name)
+        
         query_text = request.value
         top_k = request.top_k or 50
+    
+        ocr_search_body = build_frame_agg_query(query_text, page_size=min(1000, max(10, top_k)))
 
-        # NEW: Use composite-aggregation frame search
-        raw_results = _ocr_frames_by_agg(
-            query_text=query_text,
-            top_k=top_k,
-            # You can expose these as request options later if you like:
-            min_terms=None,          # None => require ALL tokens (default in search_frames_ocr)
-            min_rec_conf=0.0,
-            min_det_score=0.0,
-            language=None,
-        )
+        raw_results = es_client.search_parsed(ocr_search_body, top_k)
+        
         results = convert_ImageList(raw_results)
 
         return SearchResponse(

@@ -12,7 +12,9 @@ API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if API_DIR not in sys.path:
     sys.path.append(API_DIR)
+    
 #from load_embed_model import get_asr_embedding
+
 from frame_utils import get_metakey, get_pts_time, get_frame_path
 DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
 
@@ -323,35 +325,59 @@ class OCRClient(ESClientBase):
             print(f"❌ Error converting row to document: {e}")
             return None
 
-    def parse_hits(self, response: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def search(self, body: Dict[str, Any], top_k: Optional[int] = None, from_: Optional[int] = None, search_after: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        after_key = None
+
+        while True:
+            if after_key:
+                body["aggs"]["by_frame"]["composite"]["after"] = after_key
+            
+            resp = self.es.search(index=self.index_name, body=body)
+            
+            buckets = resp.get("aggregations", {}).get("by_frame", {}).get("buckets", [])
+            for b in buckets:
+                item = {
+                    "video_name": b["key"]["video_name"],
+                    "frame_id":   b["key"]["frame_id"],
+                    "matched_terms": int(b["matched_terms"]["value"]),
+                    "sum_rec_conf": float(b["sum_rec_conf"]["value"]), # -> score
+                    "max_rec_conf": float(b["max_rec_conf"]["value"]),
+                    "examples": [hit["_source"] for hit in b["examples"]["hits"]["hits"]],
+                }
+                results.append(item)
+                if len(results) >= top_k:
+                    return results
+
+            after_key = resp.get("aggregations", {}).get("by_frame", {}).get("after_key")
+            if not after_key:
+                break
+        
+        return results
+
+    def parse_hits(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
-        for hit in response.get("hits", {}).get("hits", []):
-            src = hit.get("_source", {})
-            score = hit.get("_score", 0.0)
-
-            video_folder = src.get("video_folder")
-            video_name = src.get("video_name")
-            frame_id = src.get("frame_id")
-
-            if any(self._is_invalid(v) for v in [video_folder, video_name, frame_id]):
-                continue
+        
+        for r in rows:
+            video_name = r["video_name"]
 
             try:
-                frame_idx = int(float(frame_id))
-            except (TypeError, ValueError):
+                frame_idx = int(float(r["frame_id"][1:]))
+            except Exception:
                 continue
-            
-            metakey = get_metakey(video_name, frame_idx)
+
+            metakey  = get_metakey(video_name, frame_idx)
+            image    = get_frame_path(metakey)
             pts_time = get_pts_time(metakey)
-            image_path = get_frame_path(metakey)
 
             out.append({
                 "video_name": video_name,
                 "frame_idx": frame_idx,
-                "score": score,
-                "image_path": image_path,
-                "pts_time": pts_time
+                "score": r.get("sum_rec_conf", 0.0),
+                "image_path": image,
+                "pts_time": pts_time,
             })
+        
         return out
 
 

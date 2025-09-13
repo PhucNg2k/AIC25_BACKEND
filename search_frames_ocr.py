@@ -141,7 +141,7 @@ def build_frame_agg_query(
             }
         }
     }
-    return body, folded_tokens
+    return body
 
 # ---------- search driver ----------
 def search_frames(
@@ -172,7 +172,9 @@ def search_frames(
     while True:
         if after_key:
             body["aggs"]["by_frame"]["composite"]["after"] = after_key
+        
         resp = es.search(index=index_name, body=body)
+        
         buckets = resp.get("aggregations", {}).get("by_frame", {}).get("buckets", [])
         for b in buckets:
             item = {
