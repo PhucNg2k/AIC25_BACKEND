@@ -13,7 +13,6 @@ API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if API_DIR not in sys.path:
     sys.path.append(API_DIR)
     
-#from load_embed_model import get_asr_embedding
 
 from frame_utils import get_metakey, get_pts_time, get_frame_path
 DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
@@ -382,10 +381,8 @@ class OCRClient(ESClientBase):
 
 
 class ASRClient(ESClientBase):
-    def __init__(self, hosts, api_key, index_name: str = "asr_index", embedding_dims: int = 768):
+    def __init__(self, hosts, api_key, index_name):
         super().__init__(hosts, api_key, index_name)
-        self.embedding_dims = embedding_dims
-    
     
     def get_mapping(self) -> Dict[str, Any]:
         return {
@@ -393,11 +390,6 @@ class ASRClient(ESClientBase):
                 "properties": {
                     "video_name":   {"type": "keyword"},
                     "text":     {"type": "text"},
-                    "embedding": {
-                        "type": "dense_vector",
-                        "dims": self.embedding_dims,
-                        "index": False   # script_score requires index:false
-                    }
                 }
             },
             "settings": {
@@ -406,41 +398,16 @@ class ASRClient(ESClientBase):
             }
         }
     
-    """
-    def get_mapping(self) -> Dict[str, Any]:
-        return {
-            "mappings": {
-                "properties": {
-                    "video_name":   {"type": "keyword"},
-                    "text":     {"type": "text"},
-                    "embedding": {
-                        "type": "dense_vector",
-                        "dims": self.embedding_dims,
-                        "index": True,
-                        "similarity": "cosine"
-                    }
-                }
-            },
-            "settings": {
-                "number_of_shards": 1,
-                "number_of_replicas": 0
-            }
-        }
-    """
-
     
     def convert_row_to_document(self, row) -> Optional[Dict[str, Any]]:
         try:
             doc = {
                 "video_name": str(row.get('video_name', '')),
-                "start_ms": int(row.get('start_ms', 0)),
-                "end_ms": int(row.get('end_ms', 0)),
-                "text": str(row.get('text', '')),
-                "transcript": str(row.get('transcript', ''))
+                "text": str(row.get('text', ''))
             }
             
             # Validate required fields
-            if any(self._is_invalid(v) for v in [doc["video_name"], doc["start_ms"], doc["end_ms"]]):
+            if any(self._is_invalid(v) for v in [doc["video_name"]]):
                 return None
                 
             return doc
@@ -448,33 +415,6 @@ class ASRClient(ESClientBase):
             print(f"❌ Error converting row to document: {e}")
             return None
     
-    """
-    def convert_row_to_document(self, row) -> Optional[Dict[str, Any]]:
-        try:
-            doc = {
-                "video_name": str(row.get('video_name', '')),
-                "start_ms": int(row.get('start_ms', 0)),
-                "end_ms": int(row.get('end_ms', 0)),
-                "text": str(row.get('text', '')),
-                "transcript": str(row.get('transcript', ''))
-            }
-
-            if any(self._is_invalid(v) for v in [doc["video_name"], doc["start_ms"], doc["end_ms"]]):
-                return None
-
-            # Prefer precomputed vector in the row; otherwise compute from text
-            emb = row.get('embedding', None)
-            if emb is not None:
-                doc["embedding"] = list(emb)
-            else:
-                doc["embedding"] = get_asr_embedding(doc["text"])
-
-            return doc
-        except Exception as e:
-            print(f"❌ Error converting row to document: {e}")
-            return None
-    """
-
     def parse_hits(self, response: Dict[str, Any]) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
         for hit in response.get("hits", {}).get("hits", []):

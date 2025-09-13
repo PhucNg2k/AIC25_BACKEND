@@ -21,74 +21,29 @@ from dependecies import (
 )
 from utils import convert_ImageList
 from group_utils import get_group_frames
-from load_embed_model import get_asr_embedding
 from asr_tools import get_estimate_keyframes
+
+#from load_embed_model import get_asr_embedding
 
 router = APIRouter(prefix="/es-search", tags=["elastic search"])
 
-def make_videoname_search_body(query_text, top_k):
-    if not top_k or top_k <= 0:
-        top_k=10000
-
-    search_body = {
-            "query": {
-                "bool": {
-                    "should": [
-                        {
-                            "match": {
-                                "video_name": {
-                                    "query": query_text,
-                                    "operator": "or"
-                                }
-                            }
-                        },
-                        {
-                            "wildcard": {
-                                "video_name": f"*{query_text}*"
-                            }
-                        }
-                    ]
-                }
-            },
-            "size": top_k,
-            "_source": ["video_folder", "video_name", "frame_id", "text"]
-        }
-
-    return search_body
-
-
 
 def make_asr_search_body(query_text, top_k=50, fuzziness="AUTO"):
-    query_vector = get_asr_embedding(query_text)
+    #query_vector = get_asr_embedding(query_text)
     
     search_body = {
         "size": top_k,
         "_source": ["video_name", "text"],
         "query": {
-            "bool": {
-                "should": [
-                    {
-                        "match": {
-                            "text": {
-                                "query": query_text,
-                                "fuzziness": fuzziness,
-                                "boost": 2.0   # lexical importance
-                            }
-                        }
-                    },
-                    {
-                        "script_score": {
-                            "query": {"match_all": {}},
-                            "script": {
-                                "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
-                                "params": {"query_vector": query_vector}
-                            }
-                        }
-                    }
-                ]
+            "match": {
+                "text": {
+                    "query": query_text,
+                    "fuzziness": fuzziness
+                }
             }
         }
     }
+    
     return search_body
 
 @router.post("/video_name", response_model=SearchResponse)
@@ -97,8 +52,6 @@ async def search_video_name(request: SearchRequest):
         query_text = request.value
         top_k = request.top_k
         
-        #search_body = make_videoname_search_body(query_text, top_k)
-        #raw_results = es_client.search_parsed(search_body)
         raw_results = get_group_frames(query_text)
         results = convert_ImageList(raw_results)
 
@@ -144,6 +97,7 @@ async def search_ocr(request: SearchRequest, es_client: OCRClientDeps):
 @router.post("/asr", response_model=SearchResponse)
 async def search_asr(request: SearchRequest, es_client: ASRClientDeps):
     try:
+        print("ES ASR index: ", es_client.index_name)
         query_text = request.value.strip()
         top_k = request.top_k
 
