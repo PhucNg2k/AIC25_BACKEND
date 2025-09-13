@@ -21,11 +21,6 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-# API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# if API_DIR not in sys.path:
-#     sys.path.append(API_DIR)
-
 DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
 
 class ESClientBase(ABC):
