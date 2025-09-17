@@ -16,7 +16,6 @@ from config import QUERY_SOURCE
     
 router = APIRouter(prefix="/llm", tags=["gemini llm"])
 
-
 class TranslateResponse(BaseModel):
     file_name: str
     translated_text: List[str]

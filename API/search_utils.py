@@ -1,7 +1,38 @@
 import httpx
 from typing import Any, Dict, List, Optional
+from od_sqlite import ODSearcher
+import os, sys
+from pathlib import Path
 
+# --- Localized OD search ---
+# OD_DB_ROOT = os.getenv('OD_DB_ROOT', './OD')   # root with *.sqlite shards
+OD_GRID_ROWS = int(os.getenv('OD_GRID_ROWS', '8'))
+OD_GRID_COLS = int(os.getenv('OD_GRID_COLS', '8'))
 
+BASE = Path(__file__).resolve().parent.parent.parent   # this is VBS_system
+
+OD_DB_ROOT = BASE / "REAL_DATA" / "OD"
+sys.path.append(BASE)
+
+# OD + localized search
+_searcher = None
+def _get_searcher() -> ODSearcher:
+    global _searcher
+    if _searcher is None:
+        print(f"BASE = {BASE}")
+        print(f"OD_DB_ROOT = {(OD_DB_ROOT)}", Path(OD_DB_ROOT).exists())
+        _searcher = ODSearcher(OD_DB_ROOT, grid_rows=OD_GRID_ROWS, grid_cols=OD_GRID_COLS)
+    return _searcher
+
+async def call_od_search(obj_mask: Dict[str, Dict], top_k: int):
+    searcher = _get_searcher()
+    print(f"OBJ MASK = {obj_mask}")
+    results = searcher.search(obj_mask or {})
+    print(results)
+    results.sort(key=lambda r: r.get('score', 0.0), reverse=True)
+    return results[: int(top_k) if top_k else 100]
+
+# helper function
 async def post_json(url: str, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=payload)

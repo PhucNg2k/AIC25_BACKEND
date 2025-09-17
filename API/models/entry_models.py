@@ -24,6 +24,7 @@ class StageModalities(BaseModel):
     ocr: Optional[ModalityPayload] = None
     asr: Optional[ModalityPayload] = None
     img: Optional[ModalityPayload] = None
+    od: Optional[ModalityPayload] = None
     localized: Optional[ModalityPayload] = None
     weight_dict: Dict[str, float]
 

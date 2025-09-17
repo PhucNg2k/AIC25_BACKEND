@@ -2,11 +2,17 @@ from models.response import ImageResult
 from typing import List
 from models.entry_models import StageModalities
 import asyncio
-from search_utils import call_text_search, call_ocr_search, call_asr_search, call_image_search
+from search_utils import (
+    call_text_search, 
+    call_ocr_search, 
+    call_asr_search, 
+    call_image_search, 
+    call_od_search
+)
 from utils import normalize_score, get_weighted_union_results
 
 
-MODAL_ORDER = ['text', 'img', 'ocr', 'asr', 'localized']
+MODAL_ORDER = ['text', 'img', 'ocr', 'asr', 'localized', 'od']
 
 # Sentinel value for atemporal results (e.g., ASR without timestamps)
 ATEMPORAL_TIME = -1.0
@@ -31,21 +37,31 @@ def reorder_modal_results(modalities: List[List[ImageResult]], record_order: Lis
 def create_search_tasks(modalities: StageModalities, form, top_k: int):
     """Create async tasks for each modality search"""
     tasks = {}
-    
+
     if modalities.text and modalities.text.value:
+        print(f"CREATING TASK FOR TEXT SEARCH")
         tasks['text'] = asyncio.create_task(call_text_search(modalities.text.value, top_k))
 
     if modalities.ocr and modalities.ocr.value:
+        print(f"CREATING TASK FOR OCR SEARCH")
         tasks['ocr'] = asyncio.create_task(call_ocr_search(modalities.ocr.value, top_k))
 
     if modalities.asr and modalities.asr.value:
+        print(f"CREATING TASK FOR ASR SEARCH")
         tasks['asr'] = asyncio.create_task(call_asr_search(modalities.asr.value, top_k))
 
     if modalities.img and modalities.img.value:
+        print(f"CREATING TASK FOR IMG SEARCH")
         field_name = modalities.img.value # e.g., "uploaded_image"
         img_file = form.get(field_name)   # Get actual file from form data
         if img_file is not None:
             tasks['img'] = asyncio.create_task(call_image_search(img_file, top_k))
+
+    if modalities.od and getattr(modalities.od, 'obj_mask', None):
+        print("CREATING TASK FOR OD SEARCH")
+        tasks['od'] = asyncio.create_task(call_od_search(modalities.od.obj_mask, top_k))
+    
+    
     
     return tasks
 
@@ -74,9 +90,9 @@ async def process_search_results(tasks, modalities: StageModalities) ->  List[Li
         # for each search's result
         for (key, res) in zip(tasks.keys(), results):
             # key can be 'ocr', 'asr' while res is List[ImageResult]
-
+            print(f"[INFO] PROCESS: {key}")
             video_name_lst = [item['video_name'] for item in res]
-            print(key, video_name_lst, sep="\n")
+            # print(key, video_name_lst, sep="\n")
             if res:
                 res = normalize_score(res)
                 singe_stage_results.append(res)
@@ -113,10 +129,10 @@ async def process_one_stage(modalities: StageModalities, form, top_k: int):
     
     # Create search tasks for all modalities
     tasks = create_search_tasks(modalities, form, top_k)
-    
+     
     # Process results and apply weights for each stage
     # print(f"tasks = {tasks}")
-    # print(f"modalities = {modalities}")
+    print(f"modalities = {modalities}")
     results, record_order = await process_search_results(tasks, modalities)
     # reorder list of results
     results = reorder_modal_results(results, record_order)

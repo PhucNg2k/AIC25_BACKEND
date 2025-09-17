@@ -5,10 +5,10 @@ from retrieve_vitL import index, metadata
 import os, sys
 from ElasticSearch.ESclient import (
     OCRClient,
-    ASRClient
+    # ASRClient
 )
 
-from google import genai
+# from google import genai
 
 
 # Parent directory to import retrieve module, make script-friendly
@@ -99,5 +99,5 @@ async def get_llm_client():
 search_resource_Deps = Annotated[dict, Depends(get_search_resources)]
 
 OCRClientDeps = Annotated[OCRClient, Depends(get_ocr_client)]
-ASRClientDeps = Annotated[ASRClient, Depends(get_asr_client)]
-GeminiClientDeps = Annotated[genai.Client, Depends(get_llm_client)]
+# ASRClientDeps = Annotated[ASRClient, Depends(get_asr_client)]
+# GeminiClientDeps = Annotated[genai.Client, Depends(get_llm_client)]
