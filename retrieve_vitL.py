@@ -1,5 +1,4 @@
 # searching keyframes using a text query with CLIP model and FAISS for fast similarity search
-
 import torch
 import faiss
 import os
