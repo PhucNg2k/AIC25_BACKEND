@@ -18,6 +18,10 @@ METADATA_AVE_PATH = "id_to_name_vitL.json"
 
 CLIP_EMBED_DIM = 1024
 
+<<<<<<< HEAD
 OCR_INDEX_NAME='ocr_index_v2'
+=======
+OCR_INDEX_NAME='ocr_index_chunked'
+>>>>>>> 510d4c5 (change ocr config)
 
 
