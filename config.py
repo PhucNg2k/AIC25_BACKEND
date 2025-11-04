@@ -6,8 +6,7 @@ WORKSPACE_ROOT = os.path.dirname(BACKEND_DIR)
 
 DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
 
-QUERY_SOURCE = os.path.join(WORKSPACE_ROOT, 'query-p2-groupA')
-
+QUERY_SOURCE = os.path.join(WORKSPACE_ROOT, 'query-p3-groupA')
 ASR_EMBED_MODEL = "intfloat/multilingual-e5-base"
 
 FAISS_SAVE_DIR  = "FaissIndex" 
