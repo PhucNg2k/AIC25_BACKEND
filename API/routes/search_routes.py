@@ -90,7 +90,7 @@ async def process_image(
         elif image_PIL.mode != 'RGB':
             image_PIL = image_PIL.convert('RGB')
         
-        raw_results = beit3_faiss_search(image_PIL, index, metadata, top_k=top_k)
+        raw_results = clip_faiss_search(image_PIL, index, metadata, top_k=top_k)
         
         # Convert raw results to ImageResult instances
         results = convert_ImageList(raw_results)
