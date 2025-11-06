@@ -26,7 +26,7 @@ from routes.es_routes import router as es_router
 from routes.llm_routes import router as llm_router
 
 
-from retrieve_vitL import index as search_index, metadata as search_metadata
+from retrieve_vitH import index as search_index, metadata as search_metadata
 
 from results_utils import discard_duplicate_frame, events_chain, update_temporal_score
 from utils import normalize_score, sort_score_results, get_weighted_union_results

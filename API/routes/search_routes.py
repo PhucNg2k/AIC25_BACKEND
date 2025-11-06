@@ -12,7 +12,8 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from retrieve_vitL import clip_faiss_search
+
+from retrieve_vitH import clip_faiss_search
 from models.response import *
 from models.request import *
 
@@ -89,7 +90,7 @@ async def process_image(
         elif image_PIL.mode != 'RGB':
             image_PIL = image_PIL.convert('RGB')
         
-        raw_results = clip_faiss_search(image_PIL, index, metadata, top_k=top_k)
+        raw_results = beit3_faiss_search(image_PIL, index, metadata, top_k=top_k)
         
         # Convert raw results to ImageResult instances
         results = convert_ImageList(raw_results)

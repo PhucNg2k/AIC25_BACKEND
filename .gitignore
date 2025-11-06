@@ -2,7 +2,7 @@
 .env*
 __pycache__
 
-
+.DS_Store
 react-ui
 Experiment
 
