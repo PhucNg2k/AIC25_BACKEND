@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 from fastapi import Depends, HTTPException
-from retrieve_vitL import index, metadata
+
+from retrieve_vitH import index, metadata
 
 import os, sys
 from ElasticSearch.ESclient import (

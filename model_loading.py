@@ -17,14 +17,9 @@ print('Torch version:', torch.__version__)
 print('OpenCLIP version:', open_clip.__version__)
 
 
-CONFIG = {
-    'root_path': '/kaggle/input/second-batch-keyframes/Keyframes_Batch_2',
-    'output_dir': 'extracted_features',
+CONFIG = {    
     'model_name': 'ViT-H-14',
     'pretrained': 'laion2b_s32b_b79k',
-    'batch_size': 32, 
-    'num_workers': 4,
-    'image_size': 224,
 }
 
 
@@ -33,8 +28,8 @@ def load_index():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     faiss_save_dir = os.path.join(script_dir, "FaissIndex")
 
-    index_save_path = "faiss_index_vitL.bin"
-    metadata_save_path = "id_to_name_vitL.json"
+    index_save_path = "faiss_index_vith_1.bin"
+    metadata_save_path = "id_to_name_vith_1.json"
 
     if torch.cuda.is_available():
         device = 'cuda'

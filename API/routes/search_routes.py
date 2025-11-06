@@ -12,7 +12,8 @@ ROOT_DIR = os.path.dirname(API_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from retrieve_vitL import clip_faiss_search
+
+from retrieve_vitH import clip_faiss_search
 from models.response import *
 from models.request import *
 
