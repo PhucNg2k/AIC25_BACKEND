@@ -1,3 +1,4 @@
+# AIC25_BACKEND/API/ElasticSearch/ESclient.py
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
@@ -13,10 +14,11 @@ API_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if API_DIR not in sys.path:
     sys.path.append(API_DIR)
     
-#from load_embed_model import get_asr_embedding
+# from load_embed_model import get_asr_embedding
+
 
 from frame_utils import get_metakey, get_pts_time, get_frame_path
-DATA_SOURCE = '/REAL_DATA/keyframes_b1/keyframes'
+DATA_SOURCE = '/REAL_DATA/keyframes_beit3/keyframes'
 
 class ESClientBase(ABC):
     def __init__(

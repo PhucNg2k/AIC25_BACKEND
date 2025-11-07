@@ -90,9 +90,11 @@ async def process_search_results(tasks, modalities: StageModalities) ->  List[Li
         # for each search's result
         for (key, res) in zip(tasks.keys(), results):
             # key can be 'ocr', 'asr' while res is List[ImageResult]
+
             print(f"[INFO] PROCESS: {key}")
             video_name_lst = [item['video_name'] for item in res]
             # print(key, video_name_lst, sep="\n")
+
             if res:
                 res = normalize_score(res)
                 singe_stage_results.append(res)
@@ -132,8 +134,13 @@ async def process_one_stage(modalities: StageModalities, form, top_k: int):
      
     # Process results and apply weights for each stage
     # print(f"tasks = {tasks}")
-    print(f"modalities = {modalities}")
+    # print(f"modalities = {modalities}")
     results, record_order = await process_search_results(tasks, modalities)
+
+    # print(type(results))
+    # print(results)
+    
+
     # reorder list of results
     results = reorder_modal_results(results, record_order)
 
@@ -142,7 +149,6 @@ async def process_one_stage(modalities: StageModalities, form, top_k: int):
         res_temporal_chain = update_temporal_score(temporal_chain_results)
     else: 
         res_temporal_chain = results[0] if results else []
-    
     
     return res_temporal_chain
 

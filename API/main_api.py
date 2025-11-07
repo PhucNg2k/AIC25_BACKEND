@@ -36,20 +36,34 @@ from results_utils import process_one_stage
 
 app = FastAPI(title="Text-to-Image Retrieval API", version="1.0.0")
 
+
+
+
+
 # Mount existing routers
 app.include_router(search_router)
 app.include_router(submit_csv_router)
 app.include_router(es_router)
+
 # app.include_router(llm_router)
 
-# CORS: if you need cookies/Authorization headers, replace ["*"] with your exact origins
+# # CORS: if you need cookies/Authorization headers, replace ["*"] with your exact origins
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=False,   # "*" + credentials=True is blocked by browsers
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,   # "*" + credentials=True is blocked by browsers
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def root():
@@ -62,12 +76,12 @@ async def search_entry(entry: Annotated[SearchEntryRequest, Form()], request: Re
 
         # Access raw form for files while using parsed model for fields
         form = await request.form()
-
         
         stage_items = sorted(entry.stage_list.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else kv[0])
         # [(0, stage0), (1,stage1), (2,stage2), ...]
         print(f"STAGE ITEMS = {stage_items}") 
         # print("READY")
+
         for stage_key, modalities in stage_items:
             print("\nProcessing stage: ", stage_key)
             stage_result = await process_one_stage(modalities, form, entry.top_k)
@@ -131,5 +145,5 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     print("Starting Text-to-Image Retrieval API...")
-    print("API Documentation: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("API Documentation: http://localhost:8001/docs")
+    uvicorn.run(app, host="0.0.0.0", port=8001)

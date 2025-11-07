@@ -141,5 +141,5 @@ async def search_ocr(request: SearchRequest, es_client: OCRClientDep):
 if __name__ == "__main__":
     import uvicorn
     print("Starting Text-to-Image Retrieval API...")
-    print("API Documentation: http://localhost:8000/docs")
+    print("API Documentation: http://localhost:8001/docs")
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,4 +1,4 @@
-# ingest_ocr.py  (drop-in replacement)
+# AIC25_BACKEND/ESscript/ingest_ocr_new.py
 from dotenv import load_dotenv
 import os
 import sys
@@ -75,14 +75,22 @@ def walk_jsonl_files(root: str, batch_dirs: List[str]) -> Iterator[Tuple[str, st
     Yields (batch_name, file_path)
     """
     for batch in batch_dirs:
+        # print(batch)
         base = os.path.join(root, batch.strip())
         if not os.path.exists(base):
             print(f"⚠️ Skipping missing batch: {base}")
             continue
-        for dirpath, _, filenames in os.walk(base):
+        for dirpath, dirname, filenames in os.walk(base):
+            # print(f"dirpath = {dirpath}")
+            # print()
+            # print(f"dirname = {dirname}")
+            # print()
+            # print(f"filenames = {filenames}")
             for fn in filenames:
                 if is_jsonl(fn):
                     yield batch.strip(), os.path.join(dirpath, fn)
+                    # print("IM HERE")
+            
 
 def path_meta(batch: str, full_path: str) -> Dict[str, str]:
     """
@@ -156,9 +164,12 @@ if __name__ == "__main__":
 
     for batch, fpath in walk_jsonl_files(DATA_ROOT + "/OCR_DeepSolo_PARSeq", BATCH_DIRS):
         total_files += 1
+        # print(f"fpath= {fpath}")
+        
         pm = path_meta(batch, fpath)
         print(f"\n📄 Processing: {pm['rel_path']}")
-
+        # print(pm) 
+        
         try:
             with open_text(fpath) as fh:
                 for i, line in enumerate(fh, start=1):
@@ -179,6 +190,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"❌ Error reading {fpath}: {e}")
 
+        
     # flush remaining
     if buffer:
         ocr_client.bulk_index(buffer, batch_size=BULK_SIZE)

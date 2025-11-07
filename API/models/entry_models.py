@@ -1,3 +1,4 @@
+# AIC25_BACKEND/API/models/entry_models.py
 from pydantic import BaseModel, field_validator
 from typing import Dict, List, Optional
 import json

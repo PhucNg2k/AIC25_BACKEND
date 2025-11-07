@@ -1,3 +1,4 @@
+# AIC25_BACKEND/API/search_utils.py
 import httpx
 from typing import Any, Dict, List, Optional
 from od_sqlite import ODSearcher
@@ -43,20 +44,20 @@ async def post_json(url: str, payload: Dict[str, Any]) -> Optional[Dict[str, Any
 
 async def call_text_search(value: str, top_k: int) -> List[dict]:
     payload = {"value": value, "top_k": top_k}
-    data = await post_json("http://localhost:8000/search/text", payload)
+    data = await post_json("http://localhost:8001/search/text", payload)
     return data.get("results", []) if data else []
 
 
 async def call_ocr_search(value: str, top_k: int) -> List[dict]:
     payload = {"value": value, "top_k": top_k}
-    data = await post_json("http://localhost:8000/es-search/ocr", payload)
+    data = await post_json("http://localhost:8001/es-search/ocr", payload)
     return data.get("results", []) if data else []
 
 
 async def call_asr_search(value: str, top_k: int) -> List[dict]:
     # Placeholder mapping: reuse video_name search if ASR endpoint not available
     payload = {"value": value, "top_k": top_k}
-    data = await post_json("http://localhost:8000/es-search/asr", payload)
+    data = await post_json("http://localhost:8001/es-search/asr", payload)
     return data.get("results", []) if data else []
 
 
@@ -70,7 +71,7 @@ async def call_image_search(image_file: Any, top_k: int) -> List[dict]:
             )
         }
         data = {"top_k": str(top_k)}
-        response = await client.post("http://localhost:8000/search/image", files=files, data=data)
+        response = await client.post("http://localhost:8001/search/image", files=files, data=data)
         if response.status_code != 200:
             return []
         return response.json().get("results", [])

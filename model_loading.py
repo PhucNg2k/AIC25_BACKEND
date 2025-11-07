@@ -33,8 +33,8 @@ def load_index():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     faiss_save_dir = os.path.join(script_dir, "FaissIndex")
 
-    index_save_path = "faiss_index_vitL.bin"
-    metadata_save_path = "id_to_name_vitL.json"
+    index_save_path = "faiss_index_vitH.bin"
+    metadata_save_path = "id_to_name_vitH.json"
 
     if torch.cuda.is_available():
         device = 'cuda'
