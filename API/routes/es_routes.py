@@ -124,10 +124,11 @@ async def search_ocr(request: SearchRequest, es_client: OCRClientDeps):
         query_text = request.value
         top_k = request.top_k or 50
     
-        ocr_search_body = build_frame_agg_query(query_text, page_size=min(1000, max(10, top_k)))
-
-        raw_results = es_client.search_parsed(ocr_search_body, top_k)
-        
+        ocr_search_body, _ = build_frame_agg_query(
+            query_text,
+            page_size=min(1000, max(10, top_k))
+        )
+        raw_results = es_client.search_parsed(ocr_search_body, top_k)        
 
         # NEW: Use composite-aggregation frame search
         # print(f"QUERY TEXT = {query_text}")
